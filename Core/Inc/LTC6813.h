@@ -639,6 +639,6 @@ void LTC6813_set_cfgrb_dcc_b(uint8_t nIC, //!< The number of ICs in The daisy ch
 							uint8_t dccbits[] //!< The DCC bits
 							);
 
-void init_app_data_6813(app_data app_data_init);
+void init_app_data_6813(app_data *app_data_init);
 
 #endif

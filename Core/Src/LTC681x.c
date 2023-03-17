@@ -2274,7 +2274,20 @@ uint8_t spi_read_byte(uint8_t tx_dat)
   return(data);
 }
 
-void init_app_data_681x(app_data app_data_init)
+void init_app_data_681x(app_data *app_data_init)
 {
-	a_d = app_data_init;
+	a_d = *app_data_init;
+	if(a_d.debug==1){
+		printf("\r\nDebugging init_app_data_681x\r\n");
+		uint8_t data[3],sent[3];
+		sent[0]=0;
+		while (sent[0]<3){
+			sent[0] +=1;
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+			HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
+			printf("data sent %d :: data in init: %d \r\n",sent[0],data[0]);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+			HAL_Delay(1000);
+		}
+	}
 }

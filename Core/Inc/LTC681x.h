@@ -783,7 +783,7 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
 
 uint8_t spi_read_byte(uint8_t tx_dat);//name conflicts with linduino also needs to take a byte as a parameter
 
-void init_app_data_681x(app_data app_data_init);
+void init_app_data_681x(app_data *app_data_init);
 
 /*const uint16_t crc15Table[256] = {0x0,0xc599, 0xceab, 0xb32, 0xd8cf, 0x1d56, 0x1664, 0xd3fd, 0xf407, 0x319e, 0x3aac,  // precomputed CRC15 Table
                                 0xff35, 0x2cc8, 0xe951, 0xe263, 0x27fa, 0xad97, 0x680e, 0x633c, 0xa6a5, 0x7558, 0xb0c1,

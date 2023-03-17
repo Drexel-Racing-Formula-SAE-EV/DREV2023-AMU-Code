@@ -65,4 +65,4 @@
 ../Core/Src/LTC681x.c:2220:6:spi_write_array	24	static
 ../Core/Src/LTC681x.c:2238:6:spi_write_read	40	static
 ../Core/Src/LTC681x.c:2268:9:spi_read_byte	32	static
-../Core/Src/LTC681x.c:2277:6:init_app_data_681x	12	static
+../Core/Src/LTC681x.c:2277:6:init_app_data_681x	40	static

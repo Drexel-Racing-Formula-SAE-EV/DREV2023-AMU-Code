@@ -1,2 +1,2 @@
 ../Core/Src/help.c:12:6:u_sleep	24	static
-../Core/Src/help.c:30:6:init_app_data_help	24	static
+../Core/Src/help.c:30:6:init_app_data_help	40	static

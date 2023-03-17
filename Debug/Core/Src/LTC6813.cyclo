@@ -64,4 +64,4 @@ LTC6813.c:738:6:LTC6813_set_cfgrb_dtmen	2
 LTC6813.c:745:6:LTC6813_set_cfgrb_ps	3
 LTC6813.c:755:6:LTC6813_set_cfgrb_gpio_b	3
 LTC6813.c:765:6:LTC6813_set_cfgrb_dcc_b	10
-LTC6813.c:787:6:init_app_data_6813	1
+LTC6813.c:787:6:init_app_data_6813	3

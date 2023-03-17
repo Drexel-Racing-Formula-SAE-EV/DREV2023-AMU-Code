@@ -59,7 +59,7 @@ void discharge_mode();
 void print_conv_time(uint32_t conv_time);
 void check_error(int error);
 void print_cells(uint8_t datalog_en);
-void init_appdata(app_data a_d);
+void init_appdata(app_data *app_data_init);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

@@ -64,4 +64,4 @@
 ../Core/Src/LTC6813.c:745:6:LTC6813_set_cfgrb_ps	32	static
 ../Core/Src/LTC6813.c:755:6:LTC6813_set_cfgrb_gpio_b	32	static
 ../Core/Src/LTC6813.c:765:6:LTC6813_set_cfgrb_dcc_b	32	static
-../Core/Src/LTC6813.c:787:6:init_app_data_6813	24	static
+../Core/Src/LTC6813.c:787:6:init_app_data_6813	40	static

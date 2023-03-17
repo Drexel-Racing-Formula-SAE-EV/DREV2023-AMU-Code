@@ -67,6 +67,8 @@ TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart2;
 
+uint8_t debug = 0;
+
 /* USER CODE BEGIN PV */
 	// 25AA040A instructions
 	/*const uint8_t EEPROM_READ = 0b00000011;
@@ -185,6 +187,7 @@ int main(void)
   a_d.hspi2 = &hspi2;
   a_d.huart2 = &huart2;
   a_d.htim1 = &htim1;
+  a_d.debug = debug;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -208,9 +211,7 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-  init_appdata(a_d);
-  //usleep(3);
-  HAL_Delay(1);
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -222,67 +223,36 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  for(int i = 0; i<200; i++){
-	  spi_tx_buffer[i] = i;
-  }
+  init_appdata(&a_d);
+  printf("\r\nStarting Code\r\n");
   while (0)
   {
+	  for(int i = 0; i<200; i++){
+		  spi_tx_buffer[i] = i;
+	  }
          printf("Hello World\n\r");//wont see until uart to usb recieved
          //turn on rgb leds
          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
          //HAL_Delay(1000);
    	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
    	  HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+   	  for(int i = 0; i<200; i++){
+   		  printf("%d ",spi_rx_buffer[i]);
+   	  }
    	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
          //turn off rgb leds
          HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
-         //HAL_Delay(1000);
+         HAL_Delay(1000);
     /* USER CODE END WHILE */	
 	}
   // CS pin should default high
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
 
-  // Say something
-
-  // Enable write enable latch (allow write operations)
-  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
- // HAL_SPI_Transmit(&hspi1, (uint8_t *)&EEPROM_WREN, 1, 100);
- // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-
-  // Read status register
- // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
- // HAL_SPI_Transmit(&hspi1, (uint8_t *)&EEPROM_RDSR, 1, 100);
- // HAL_SPI_Receive(&hspi1, (uint8_t *)spi_buf, 1, 100);
- // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-
-  // Print out status register
-
-  // Test bytes to write to EEPROM
- // spi_buf[0] = 0xAB;
-  //spi_buf[1] = 0xCD;
-  //spi_buf[2] = 0xEF;
-
-  // Set starting address
-  //addr = 0x05;
-
-  // Write 3 bytes starting at given address
-  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-  //HAL_SPI_Transmit(&hspi1, (uint8_t *)&EEPROM_WRITE, 1, 100);
-  //HAL_SPI_Transmit(&hspi1, (uint8_t *)&addr, 1, 100);
-  //HAL_SPI_Transmit(&hspi1, (uint8_t *)spi_buf, 3, 100);
-  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-
-  // Clear buffer
-  //spi_buf[0] = 0;
-  //spi_buf[1] = 0;
-  //spi_buf[2] = 0;
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  printf("hi\r\n");
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
   HAL_Delay(1000);
   //turn off rgb leds
@@ -290,10 +260,9 @@ int main(void)
   HAL_Delay(1000);
   while (1)
   {
-	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-	  //HAL_SPI_Transmit(&hspi1, (uint8_t *)&EEPROM_WREN, 1, 100);
+	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 	  //HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
-	  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 	  printf("starting cell voltage reading loop\r\n");
 	  //wakeup_sleep(TOTAL_IC);
 	  //printf("pass1\r\n");
@@ -781,9 +750,30 @@ void print_cells(uint8_t datalog_en)
   printf("\r\n");
 }
 
-void init_appdata(app_data a_d)
+void init_appdata(app_data *app_data_init)
 {
-	init_app_data_6813(a_d);
+	//printf("blahblah\r\n");
+	//printf("%u",app_data_init->hspi1->Init.BaudRatePrescaler);
+	static app_data a_dd;
+	a_dd = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files
+
+	if(a_dd.debug==1){
+		printf("\r\nDebugging init_appdata(main)\r\n");
+		int data[3],sent[3];
+		sent[0]=0;
+		while (sent[0]<3){
+			printf("prescaler: %u\r\n",app_data_init->hspi1->Init.BaudRatePrescaler);
+			printf("prescaler: %u\r\n",a_dd.hspi1->Init.BaudRatePrescaler);
+			sent[0] +=1;
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+			HAL_SPI_TransmitReceive(app_data_init->hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
+			printf("data sent %d :: data in init: %d \r\n",sent[0],data[0]);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+			HAL_Delay(1000);
+		}
+	}
+	init_app_data_6813(&a_dd);
+	init_app_data_help(&a_dd);
 }
 
 /*void cmd_6813(uint8_t tx_cmd[2]) //The command to be transmitted

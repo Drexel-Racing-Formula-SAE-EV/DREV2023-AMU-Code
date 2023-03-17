@@ -21,6 +21,8 @@ typedef struct
 	UART_HandleTypeDef *huart2;
 
 	TIM_HandleTypeDef *htim1;
+
+	uint8_t debug;
 } app_data;
 
 void u_sleep(uint32_t microseconds);
