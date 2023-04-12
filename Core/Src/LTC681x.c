@@ -65,9 +65,10 @@ void wakeup_sleep(uint8_t total_ic) //Number of ICs in the system
 {
 	for (int i =0; i<total_ic; i++)
 	{
-		printf("made it in\r\n");
+	   //printf("made it in\r\n");
 	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 	   u_sleep(300); // Guarantees the LTC681x will be in standby
+	   //printf("stuck\r\n");
 	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 	   u_sleep(10);
 	}
@@ -756,7 +757,11 @@ void LTC681x_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
 	cmd_pec = pec15_calc(2, cmd);
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
-
+	printf("aaaaah\r\n");
+	for(int i=0;i<4;i++){
+		printf("%x\r\n",cmd[i]);
+	}
+	printf("aaaaah\r\n");
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
@@ -933,9 +938,9 @@ uint32_t LTC681x_pollAdc()
 	cmd[3] = (uint8_t)(cmd_pec);
 
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	while(1){
-	spi_write_array(4,cmd);
-	}
+	//while(1){
+	//spi_write_array(4,cmd);
+	//}
 	while ((counter<200000)&&(finished == 0))
 	{
 		printf("pol adc while\r\n");
@@ -2220,14 +2225,14 @@ Writes an array of bytes out of the SPI port
 void spi_write_array(uint8_t len, // Option: Number of bytes to be written on the SPI port
                      uint8_t data[] //Array of bytes to be written on the SPI port
                     )
-{printf("spi write\r\n");
+{//printf("spi write\r\n");
   for (uint8_t i = 0; i < len; i++)
   {
     //SPI.transfer((int8_t)data[i]);
-    HAL_SPI_Transmit(&a_d.hspi1, data[i],1,100);
-    printf("%x ",data[i]);
+    HAL_SPI_Transmit(a_d.hspi1, data[i],1,100);
+    //printf("%x ",data[i]);
   }
-  printf("\r\n");
+  //printf("\r\n");
 }
 
 /*
@@ -2241,27 +2246,29 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
                     uint8_t rx_len //Option: number of bytes to be read from the SPI port
                    )
 {
+
   for (uint8_t i = 0; i < tx_len; i++)
   {
-    //SPI.transfer(tx_Data[i]);
-    HAL_SPI_Transmit(&a_d.hspi1, tx_Data[i],1,100);
+    HAL_SPI_Transmit(a_d.hspi1, tx_Data[i],1,100);
   }
-  for(uint8_t i = 0; i<tx_len; i++){
+  /*for(uint8_t i = 0; i<tx_len; i++){
   	printf("%x\r\n",tx_Data[i]);
-  }
-  printf("next cell\r\n");
+  }*/
+  //printf("next cell\r\n");
   for (uint8_t i = 0; i < rx_len; i++)
   {
-
-    //rx_data[i] = (uint8_t)SPI.transfer(0xFF);
-    HAL_SPI_TransmitReceive(&a_d.hspi1, 0xFF,rx_data[i],1,100);
-    //rx_data[i] = rx_data[i];
+    //HAL_SPI_TransmitReceive(a_d.hspi1, 0xFF,rx_data[i],1,100);
+	  HAL_SPI_Receive(a_d.hspi1, rx_data[i],1,100);
   }
-  for(uint8_t i = 0; i<rx_len; i++){
+  /*printf(" cell\r\n");
+ for(uint8_t i = 0; i<rx_len; i++){
   	printf("%x\r\n",rx_data[i]);
   }
-  printf("next cell\r\n");
-
+  printf("next cell\r\n");*/
+	//HAL_SPI_TransmitReceive(a_d.hspi1, tx_Data,rx_data,8,100);
+	for(uint8_t i = 0; i<rx_len; i++){
+		printf("%x\r\n",rx_data[i]);
+	}
 }
 
 
@@ -2269,8 +2276,8 @@ uint8_t spi_read_byte(uint8_t tx_dat)
 {
   uint8_t data;
   //data = (uint8_t)SPI.transfer(0xFF);
-  HAL_SPI_TransmitReceive(&a_d.hspi1, 0xFF,data,1,100);
-  printf("%x\r\n",data);
+  HAL_SPI_Receive(a_d.hspi1, data,1,100);
+  //printf("%x\r\n",data);
   return(data);
 }
 

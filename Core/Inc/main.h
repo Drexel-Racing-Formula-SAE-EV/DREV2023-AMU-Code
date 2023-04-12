@@ -60,6 +60,14 @@ void print_conv_time(uint32_t conv_time);
 void check_error(int error);
 void print_cells(uint8_t datalog_en);
 void init_appdata(app_data *app_data_init);
+void print_rxcomm(void);
+void print_wrcomm(void);
+void test1(void);
+void test2(void);
+void test3(void);
+void test4(void);
+void test5(void);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -77,8 +85,6 @@ void init_appdata(app_data *app_data_init);
 #define OTG_FS_PowerSwitchOn_GPIO_Port GPIOC
 #define PDM_OUT_Pin GPIO_PIN_3
 #define PDM_OUT_GPIO_Port GPIOC
-#define B1_Pin GPIO_PIN_0
-#define B1_GPIO_Port GPIOA
 #define GPIO_CS_Pin GPIO_PIN_4
 #define GPIO_CS_GPIO_Port GPIOA
 #define BOOT1_Pin GPIO_PIN_2

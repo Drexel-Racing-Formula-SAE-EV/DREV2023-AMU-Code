@@ -38,6 +38,7 @@
 #define PWM 1
 #define SCTL 2
 #define TOTAL_IC 1
+#define DEBUG 0
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,6 +59,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
 CAN_HandleTypeDef hcan1;
 
 SPI_HandleTypeDef hspi1;
@@ -66,8 +69,6 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart2;
-
-uint8_t debug = 0;
 
 /* USER CODE BEGIN PV */
 	// 25AA040A instructions
@@ -137,6 +138,26 @@ uint8_t debug = 0;
 	uint8_t DTMEN = 1; //!< Enable Discharge Timer Monitor
 	uint8_t PSBITS[2]= {0,0}; //!< Digital Redundancy Path Selection//ps-0,1
 
+	uint8_t UART2_rxBuffer[100] = {0};
+
+	uint8_t stop_flag = 0;
+	uint8_t uart_cmd = 0;
+
+	// Menu string to display menu to user
+	char menu[500] = {"\
+	\r\n============ stm32-cli =============\
+	\r\nPrint Menu		         ----> m\
+	\r\nDebug	     			 ----> d\
+	\r\nTest 1                   ----> 1\
+	\r\nTest 2                   ----> 2\
+	\r\nSPI_COMM		         ----> 3\
+	\r\nTest 4	     			 ----> 4\
+	\r\nTest 5	     			 ----> 5\
+	\r\nOr, press button for accel. data.\
+	\r\nType your option here: \r\n\r\n"};
+
+	static app_data a_dd;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -147,9 +168,11 @@ static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_ADC1_Init(void);
 void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
+uint32_t DWT_Delay_Init(void);
 //void cmd_6813(uint8_t tx_cmd[2]);
 
 
@@ -173,21 +196,7 @@ void MX_USB_HOST_Process(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  char uart_buf[50];
-  int uart_buf_len;
-  char spi_buf[20];
-  char spi_tx_buffer[200];
-  char spi_rx_buffer[200];
-  uint16_t spi_transfer_size = 200;
-  uint8_t addr;
-  uint8_t wip;
   app_data a_d;
-  a_d.hcan1 = &hcan1;
-  a_d.hspi1 = &hspi1;
-  a_d.hspi2 = &hspi2;
-  a_d.huart2 = &huart2;
-  a_d.htim1 = &htim1;
-  a_d.debug = debug;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -222,71 +231,72 @@ int main(void)
   MX_USB_HOST_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
+  DWT_Delay_Init();
+  printf("broke\r\n");
+  a_d.hcan1 = &hcan1;
+  a_d.hspi1 = &hspi1;
+  a_d.hspi2 = &hspi2;
+  a_d.huart2 = &huart2;
+  a_d.htim1 = &htim1;
+  a_d.debug = DEBUG;
+
+  HAL_UART_Receive_IT (&huart2, UART2_rxBuffer, 1);
+  //while(1){}//remove once done testing interupts
   init_appdata(&a_d);
   printf("\r\nStarting Code\r\n");
-  while (0)
-  {
-	  for(int i = 0; i<200; i++){
-		  spi_tx_buffer[i] = i;
-	  }
-         printf("Hello World\n\r");//wont see until uart to usb recieved
-         //turn on rgb leds
-         HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
-         //HAL_Delay(1000);
-   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-   	  HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
-   	  for(int i = 0; i<200; i++){
-   		  printf("%d ",spi_rx_buffer[i]);
-   	  }
-   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-         //turn off rgb leds
-         HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
 
-         HAL_Delay(1000);
-    /* USER CODE END WHILE */	
-	}
   // CS pin should default high
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
   HAL_Delay(1000);
   //turn off rgb leds
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
   HAL_Delay(1000);
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	  //HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
-	  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	  printf("starting cell voltage reading loop\r\n");
-	  //wakeup_sleep(TOTAL_IC);
-	  //printf("pass1\r\n");
-	  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
-	  //printf("pass2\r\n");
-	  conv_time = LTC6813_pollAdc();
-	  printf("start ADC\r\n");
-	  HAL_Delay(1000);
+	  //printf("entered the while\r\n");
+	  if(UART2_rxBuffer[0] !=0){
+		  switch(UART2_rxBuffer[0]){
+		     if(stop_flag==1){
+		     	stop_flag=0;
+		     }
+		     else{
+		     	stop_flag=1;
+		     }
+		     //stop_flag=1;//check to see if interrupt will start running multiple tests at the same time if not running
+		 		case '1':
+		 			//run test 1
+		 			test1();
+		 			break;
+		 		case '2':
+		 			test2();
+		 			break;
+		 		case '3':
+		 			test3();
+		 			break;
+		 		case '4':
+		 			test4();
+		 			break;
+		 		case 'm':
+		 			printf("%s",menu);
+		 			stop_flag=0;
+		 			break;
+		 		default:
+		 			printf("we dont like that command\r\n");
+		     }
+		     printf("stop flag: %d\r\n",stop_flag);
+		     printf("UART2_rxBuffer: %x\r\n",UART2_rxBuffer[0]);
 
-	  //printf("pass3\r\n");
-	  print_conv_time(conv_time);
-	  //printf("Cell Voltages:\r\n");
 
-      //wakeup_sleep(TOTAL_IC);
-      error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
-      check_error(error);
-      print_cells(DATALOG_DISABLED);
-
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
-      HAL_Delay(10000);
-      //turn off rgb leds
-      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-      HAL_Delay(10000);
-
+		     UART2_rxBuffer[0]=0;
+	  }
     /* USER CODE END WHILE */
     MX_USB_HOST_Process();
 
@@ -338,6 +348,58 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ScanConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
+  */
+  sConfig.Channel = ADC_CHANNEL_11;
+  sConfig.Rank = 1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -397,10 +459,10 @@ static void MX_SPI1_Init(void)
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_256;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -586,18 +648,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(PDM_OUT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pin : GPIO_CS_Pin */
   GPIO_InitStruct.Pin = GPIO_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIO_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BOOT1_Pin */
   GPIO_InitStruct.Pin = BOOT1_Pin;
@@ -650,11 +712,48 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+
+uint32_t DWT_Delay_Init(void)
+{
+    /* Disable TRC */
+    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+    /* Enable TRC */
+    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+
+    /* Disable clock cycle counter */
+    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+    /* Enable  clock cycle counter */
+    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
+
+    /* Reset the clock cycle counter value */
+    DWT->CYCCNT = 0;
+
+    /* 3 NO OPERATION instructions */
+    __ASM volatile ("NOP");
+    __ASM volatile ("NOP");
+    __ASM volatile ("NOP");
+
+    /* Check if clock cycle counter has started */
+    if(DWT->CYCCNT)
+    {
+       return 0; /*clock cycle counter started*/
+    }
+    else
+    {
+      return 1; /*clock cycle counter not started*/
+    }
+}
+
+
 PUTCHAR_PROTOTYPE
 {
   /* Place your implementation of fputc here */
@@ -669,28 +768,43 @@ const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immedi
 const int current_max = 2;//max current allowed for charging system
 int CCL = 2; // current charge limit - initially the max current a cell can handle
 int DCL = 2; // discharge current limit - initially the max current a cell can handle
+int hall_current = 0;
 #define CHARGING 1
 #define DISCHARGING 2
-void charging_mode(){
+//assign AIR to GPIO PIN
+void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
 	while(mode_flag==CHARGING){
-		//check if CCL >0
+		//check if charge current limit >0
 		if(CCL>0){
-			if(1){//check if pack current >= charge current limit+xAmps
-				break;//turn off charging
+			//ADC of hall effect-at pin PC1
+			if(hall_current>=CCL+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
+
 			}
 			else{
 				//allow charging to continue - repeats the loop
 			}
 		}
 		else{
-			;//turn off power input
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
 		}
 	}
 }
 
-void discharge_mode(){
+void discharge_mode(){//default mode ~when GPIO Signal is low
 	while(mode_flag==DISCHARGING){
+		//check if discharge current limit >0
+		if(DCL>0){
+			if(hall_current < DCL+2){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+			}
+			else{
 
+			}
+		}
+		else{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+		}
 	}
 }
 
@@ -750,11 +864,183 @@ void print_cells(uint8_t datalog_en)
   printf("\r\n");
 }
 
+/*!****************************************************************************
+  \brief prints data which is written on COMM register onto the serial port
+  @return void
+ *****************************************************************************/
+void print_wrcomm(void)
+{
+ int comm_pec;
+
+  //Serial.println(F("Written Data in COMM Register: "));
+  printf("Written Data in COMM Register: \r\n");
+  for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC- "));
+    //Serial.print(current_ic+1,DEC);
+    printf(" IC- %d",current_ic+1);
+
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].com.tx_data[i]);
+      printf(", %x",BMS_IC[current_ic].com.tx_data[i]);
+    }
+    //Serial.print(F(", Calculated PEC: 0x"));
+    printf(", Calculated PEC: ");
+    comm_pec = pec15_calc(6,&BMS_IC[current_ic].com.tx_data[0]);
+    //serial_print_hex((uint8_t)(comm_pec>>8));
+    printf("%x",comm_pec>>8);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex((uint8_t)(comm_pec));
+    printf(", %x\r\n",comm_pec);
+    //Serial.println("\n");
+  }
+}
+
+/*!****************************************************************************
+  \brief Prints received data from COMM register onto the serial port
+  @return void
+ *****************************************************************************/
+void print_rxcomm(void)
+{
+   printf("Received Data in COMM register:");
+  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC- "));
+    //Serial.print(current_ic+1,DEC);
+    printf(" IC- %d",current_ic+1);
+
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].com.rx_data[i]);
+      printf(", %x",BMS_IC[current_ic].com.rx_data[i]);
+    }
+    //Serial.print(F(", Received PEC: 0x"));
+    //serial_print_hex(BMS_IC[current_ic].com.rx_data[6]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].com.rx_data[7]);
+    //Serial.println("\n");
+    printf(", Received PEC: %x, %x\r\n",BMS_IC[current_ic].com.rx_data[6],BMS_IC[current_ic].com.rx_data[7]);
+  }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    HAL_UART_Transmit(&huart2, UART2_rxBuffer, 1, 100);
+    //beeg_UART2_rxBuffer[i] = UART2_rxBuffer[i];
+    //HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, 1);
+	//uart_cmd=UART2_rxBuffer[0];
+    HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, 1);
+}
+
+void test1(void){
+	printf("\r\n entering test1\r\n;");
+	  char spi_tx_buffer[200];
+	  char spi_rx_buffer[200];
+	  uint16_t spi_transfer_size = 200;
+	  while (0)//stop_flag)
+	  {
+		  for(int i = 0; i<200; i++){
+			  spi_tx_buffer[i] = i;
+		  }
+	         //printf("Hello World\n\r");//wont see until uart to usb recieved
+	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	   	  HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+	   	//spi_write_read(spi_tx_buffer,200,spi_rx_buffer,200);
+	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	   	  for(int i = 0; i<200; i++){
+	   		  printf("%d ",spi_rx_buffer[i]);
+	   	  }
+	         //turn off rgb leds
+	         //HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
+
+	         HAL_Delay(1000);
+		}
+	  printf("\r\n exiting test1\r\n;");
+}
+
+void test2(void){
+	printf("\r\n entering test2\r\n;");
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	  while(stop_flag){
+			HAL_SPI_Transmit(a_dd.hspi1, 0x02,1,100);
+			//for(uint8_t i = 0; i<tx_len+rx_len; i++){
+			  //	printf("%x\r\n",rx_data[i]);
+			//  }
+			u_sleep(100);
+	  }
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+      HAL_Delay(1000);
+  	printf("\r\n exiting test2\r\n;");
+
+}
+
+void test3(void){
+	printf("\r\n entering test3\r\n;");
+	  while(stop_flag){
+	      for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
+	      {
+	        //Communication control bits and communication data bytes. Refer to the data sheet.
+	        BMS_IC[current_ic].com.tx_data[0]= 0x81; // Icom CSBM Low(8) + data D0 (0x11)
+	        BMS_IC[current_ic].com.tx_data[1]= 0x10; // Fcom CSBM Low(0)
+	        BMS_IC[current_ic].com.tx_data[2]= 0xA2; // Icom CSBM Falling Edge (A) + data D1 (0x25)
+	        BMS_IC[current_ic].com.tx_data[3]= 0x50; // Fcom CSBM Low(0)
+	        BMS_IC[current_ic].com.tx_data[4]= 0xA1; // Icom CSBM Falling Edge (A) + data D2 (0x17)
+	        BMS_IC[current_ic].com.tx_data[5]= 0x79; // Fcom CSBM High(9)
+	      }
+	      wakeup_sleep(TOTAL_IC);
+	      LTC6813_wrcomm(TOTAL_IC,BMS_IC);
+	      print_wrcomm();
+
+	      wakeup_idle(TOTAL_IC);
+	      LTC6813_stcomm(3);
+
+	      wakeup_idle(TOTAL_IC);
+	      error = LTC6813_rdcomm(TOTAL_IC,BMS_IC);
+	      check_error(error);
+	      print_rxcomm();
+	  }
+	  printf("\r\n exiting test3\r\n;");
+}
+
+void test4(void){
+	printf("\r\n entering test4\r\n;");
+	  while (stop_flag)
+	  {
+		  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+		  //HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+		  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+		  printf("starting cell voltage reading loop\r\n");
+		  //wakeup_sleep(TOTAL_IC);
+		  //printf("pass1\r\n");
+		  //LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+		  //printf("pass2\r\n");
+		  //conv_time = LTC6813_pollAdc();
+		  //printf("start ADC waiting 1 seconds\r\n");
+		  //HAL_Delay(1000);
+
+		  //printf("pass3\r\n");
+		 // print_conv_time(conv_time);
+		  //printf("Cell Voltages:\r\n");
+
+	      wakeup_sleep(TOTAL_IC);
+	      error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
+	      check_error(error);
+	      print_cells(DATALOG_DISABLED);
+
+	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
+	      HAL_Delay(1000);
+	      //turn off rgb leds
+	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
+	      HAL_Delay(1000);
+	  }
+	  printf("\r\n exiting test4\r\n;");
+}
+
 void init_appdata(app_data *app_data_init)
 {
-	//printf("blahblah\r\n");
-	//printf("%u",app_data_init->hspi1->Init.BaudRatePrescaler);
-	static app_data a_dd;
 	a_dd = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files
 
 	if(a_dd.debug==1){
@@ -775,34 +1061,6 @@ void init_appdata(app_data *app_data_init)
 	init_app_data_6813(&a_dd);
 	init_app_data_help(&a_dd);
 }
-
-/*void cmd_6813(uint8_t tx_cmd[2]) //The command to be transmitted
-{
-	uint8_t cmd[4];
-	uint16_t cmd_pec;
-	uint8_t md_bits;
-
-	cmd[0] = tx_cmd[0];
-	cmd[1] =  tx_cmd[1];
-	cmd_pec = pec15(2, cmd);
-	cmd[2] = (uint8_t)(cmd_pec >> 8);
-	cmd[3] = (uint8_t)(cmd_pec);
-	//change below to be hal spi transfer
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-	//pi_write_array(4,cmd);
-	HAL_SPI_Transmit(&hspi1, cmd, 4, 100);
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-}*/
-
-
-
-
-
-
-
-
-
-
 
 /* USER CODE END 4 */
 

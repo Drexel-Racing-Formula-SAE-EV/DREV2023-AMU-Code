@@ -61,6 +61,7 @@
 #include "stdint.h"
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "LTC681x.h"
 #include "stm32f4xx_hal.h"
 #include "help.h"

@@ -19,11 +19,12 @@ void u_sleep (uint32_t microseconds)
 	//};
 	//HAL_Delay();
 	  uint32_t clk_cycle_start = DWT->CYCCNT;
-
+	  //printf("here 1\r\n");
 	  /* Go to number of cycles for system */
 	  microseconds *= (HAL_RCC_GetHCLKFreq() / 1000000);
-
+	  //printf("here 2\r\n");
 	  /* Delay till end */
+	  //printf("%d : %d\r\n",DWT->CYCCNT- clk_cycle_start,microseconds);
 	  while ((DWT->CYCCNT - clk_cycle_start) < microseconds);
 }
 
