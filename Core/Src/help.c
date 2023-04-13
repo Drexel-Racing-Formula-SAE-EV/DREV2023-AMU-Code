@@ -47,3 +47,46 @@ void init_app_data_help(app_data *app_data_init)
 		}
 	}
 }
+
+void spi_loopback(uint8_t *stop_flag){
+	printf("\r\n spi loopback\r\n;");
+	char spi_tx_buffer[200]={0};
+	char spi_rx_buffer[200]={0};
+	uint16_t spi_transfer_size = 200;
+	for(int i = 0; i<200; i++){
+	  spi_tx_buffer[i] = i;
+	}
+	while(*stop_flag){
+	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	   	  HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	   	  for(int i = 0; i<200; i++){
+	   		  printf("%d ",spi_tx_buffer[i]);
+	   	  }
+	   	  for(int i = 0; i<200; i++){
+	   		  printf("%d ",spi_rx_buffer[i]);
+	   	  }
+	         HAL_Delay(1000);
+	}
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	HAL_Delay(1000);
+  	printf("\r\n exiting test2\r\n;");
+
+}
+
+void spi_infinite_send(uint8_t *stop_flag){
+	printf("\r\n entering test2\r\n;");
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	  uint8_t blah[1] = {0x02};
+	  while(*stop_flag){
+			HAL_SPI_Transmit(a_d.hspi1, blah,1,100);
+			//for(uint8_t i = 0; i<tx_len+rx_len; i++){
+			  //	printf("%x\r\n",rx_data[i]);
+			//  }
+	         HAL_Delay(1000);
+	  }
+	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+      HAL_Delay(1000);
+  	printf("\r\n exiting test2\r\n;");
+
+}

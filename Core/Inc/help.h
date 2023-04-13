@@ -10,6 +10,9 @@
 
 #include "stm32f4xx_hal.h"
 #include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 typedef struct
 {
@@ -28,5 +31,9 @@ typedef struct
 void u_sleep(uint32_t microseconds);
 
 void init_app_data_help(app_data *app_data_init);
+
+void spi_infinite_send(uint8_t *stop_flag);
+
+void spi_loopback(uint8_t *stop_flag);
 
 #endif /* INC_HELP_H_ */

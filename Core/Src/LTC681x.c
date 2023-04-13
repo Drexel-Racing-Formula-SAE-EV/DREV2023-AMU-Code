@@ -757,10 +757,10 @@ void LTC681x_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
 	cmd_pec = pec15_calc(2, cmd);
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
-	printf("aaaaah\r\n");
+	/*printf("aaaaah\r\n");
 	for(int i=0;i<4;i++){
 		printf("%x\r\n",cmd[i]);
-	}
+	}*/
 	printf("aaaaah\r\n");
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
@@ -2257,7 +2257,6 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
   //printf("next cell\r\n");
   for (uint8_t i = 0; i < rx_len; i++)
   {
-    //HAL_SPI_TransmitReceive(a_d.hspi1, 0xFF,rx_data[i],1,100);
 	  HAL_SPI_Receive(a_d.hspi1, rx_data[i],1,100);
   }
   /*printf(" cell\r\n");
@@ -2265,10 +2264,9 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
   	printf("%x\r\n",rx_data[i]);
   }
   printf("next cell\r\n");*/
-	//HAL_SPI_TransmitReceive(a_d.hspi1, tx_Data,rx_data,8,100);
-	for(uint8_t i = 0; i<rx_len; i++){
+	/*for(uint8_t i = 0; i<rx_len; i++){
 		printf("%x\r\n",rx_data[i]);
-	}
+	}*/
 }
 
 
