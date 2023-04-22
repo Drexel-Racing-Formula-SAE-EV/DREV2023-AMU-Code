@@ -239,8 +239,8 @@ int main(void)
   DWT_Delay_Init();
   printf("broke\r\n");
   a_d.hcan1 = &hcan1;
-  a_d.hspi1 = &hspi1;
-  a_d.hspi2 = &hspi2;
+  a_d.hspi1 = &hspi2;//flip back
+  a_d.hspi2 = &hspi2;//flip bakc
   a_d.huart2 = &huart2;
   a_d.htim1 = &htim1;
   a_d.debug = DEBUGG;
@@ -251,13 +251,14 @@ int main(void)
   printf("\r\nStarting Code\r\n");
 
   // CS pin should default high
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
   HAL_Delay(1000);
   //turn off rgb leds
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
   HAL_Delay(1000);
+  HAL_TIM_Base_Start(&htim1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -281,6 +282,15 @@ int main(void)
 		 		case '4':
 		 			test4();
 		 			break;
+		 		case '5':
+		 			/*printf("start sleep\r\n");
+		 			__HAL_TIM_SET_COUNTER(&htim1,0);  // set the counter value a 0
+		 			while (__HAL_TIM_GET_COUNTER(&htim1) < 300){
+		 				printf("%lu\r\n",__HAL_TIM_GET_COUNTER(&htim1));
+		 			}
+		 			printf("end sleep\r\n");*/
+					test5();
+					break;
 		 		case 'c':
 		 			charging_mode();
 		 			break;
@@ -503,10 +513,10 @@ static void MX_SPI2_Init(void)
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
   hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
-  hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -620,7 +630,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|GPIO_PIN_7|GPIO_PIN_8, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
@@ -672,6 +682,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BOOT1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PE8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CLK_IN_Pin */
   GPIO_InitStruct.Pin = CLK_IN_Pin;
@@ -949,14 +966,14 @@ void test1(void){
 	  char spi_tx_buffer[200];
 	  char spi_rx_buffer[200];
 	  uint16_t spi_transfer_size = 200;
-	  while (0)//stop_flag)
+	  while (stop_flag)//stop_flag)
 	  {
 		  for(int i = 0; i<200; i++){
 			  spi_tx_buffer[i] = i;
 		  }
 	         //printf("Hello World\n\r");//wont see until uart to usb recieved
 	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	   	  HAL_SPI_TransmitReceive(&hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+	   	  HAL_SPI_TransmitReceive(&hspi2, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
 	   	//spi_write_read(spi_tx_buffer,200,spi_rx_buffer,200);
 	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 	   	  for(int i = 0; i<200; i++){
@@ -972,7 +989,7 @@ void test1(void){
 
 void spi_comm_test(void){
 	printf("\r\n entering test3\r\n;");
-	  while(stop_flag){
+	  //while(stop_flag){
 		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
 	      for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
 	      {
@@ -986,7 +1003,7 @@ void spi_comm_test(void){
 	      }
 	      wakeup_sleep(TOTAL_IC);
 	      LTC6813_wrcomm(TOTAL_IC,BMS_IC);
-	      print_wrcomm();
+	      //print_wrcomm();
 
 	      wakeup_idle(TOTAL_IC);
 	      LTC6813_stcomm(3);
@@ -994,20 +1011,22 @@ void spi_comm_test(void){
 	      wakeup_idle(TOTAL_IC);
 	      error = LTC6813_rdcomm(TOTAL_IC,BMS_IC);
 	      check_error(error);
+	      print_wrcomm();
 	      print_rxcomm();
 	      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
-	  }
+	      //HAL_Delay(1000);
+	  //}
 	  printf("\r\n exiting test3\r\n;");
 }
 
 void test4(void){
 	printf("\r\n entering test4\r\n;");
-	  while (stop_flag)
-	  {
+	  //while (stop_flag)
+	  //{
 		  printf("starting cell voltage reading loop\r\n");
 		  printf("recording wakeup sleep\r\n");
 		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
-		  wakeup_sleep(TOTAL_IC);
+		  //wakeup_sleep(TOTAL_IC);
 		  //printf("pass1\r\n");
 		  //LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
 		  //printf("pass2\r\n");
@@ -1028,9 +1047,43 @@ void test4(void){
 	      HAL_Delay(1000);
 	      //turn off rgb leds
 	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-	      HAL_Delay(1000);
-	  }
+	      //HAL_Delay(1000);
+	  //}
 	  printf("\r\n exiting test4\r\n;");
+}
+
+void test5(void){
+	printf("starting sleep\r\n");
+	for(int i=0;i<10;i++){
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+		u_sleep(300);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+		u_sleep(300);
+	}
+
+	printf("ending sleep\r\n");
+}
+
+void volt_calc(void){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
+	int volt_min=1000,volt_max=0,volt_avg=0,total_cells=0;
+	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
+	  {
+	    for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++){
+	    	if(volt_min>BMS_IC[current_ic].cells.c_codes[i]*0.0001){
+	    		volt_min = BMS_IC[current_ic].cells.c_codes[i]*0.0001;
+	    	}
+	    	if(volt_max<BMS_IC[current_ic].cells.c_codes[i]*0.0001){
+	    		volt_max=BMS_IC[current_ic].cells.c_codes[i]*0.0001;
+	    	}
+	    	volt_avg += BMS_IC[current_ic].cells.c_codes[i]*0.0001;
+	    	total_cells++;
+	    }
+	    volt_avg = volt_avg/total_cells;
+	  }
+}
+
+void temp_calc(void){
+
 }
 
 void init_appdata(app_data *app_data_init)
