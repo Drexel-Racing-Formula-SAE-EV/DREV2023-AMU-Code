@@ -945,11 +945,11 @@ uint32_t LTC681x_pollAdc()
 
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 	//while(1){
-	//spi_write_array(4,cmd);
+	spi_write_array(4,cmd);
 	//}
 	while ((counter<200000)&&(finished == 0))
 	{
-		printf("pol adc while\r\n");
+		//printf("pol adc while\r\n");
 		current_time = spi_read_byte(0xff);
 		if (current_time>0)
 		{
@@ -959,7 +959,7 @@ uint32_t LTC681x_pollAdc()
 		{
 			counter = counter + 10;
 		}
-		HAL_Delay(1000);
+		//HAL_Delay(1000);
 	}
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 

@@ -66,6 +66,10 @@ void test1(void);
 void spi_comm_test(void);
 void test4(void);
 void test5(void);
+void coll_cell_volt(void);
+void temp_calc(void);
+void volt_calc(void);
+void get_cell_data(void);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE END EFP */
 

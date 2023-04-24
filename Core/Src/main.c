@@ -37,7 +37,7 @@
 #define DATALOG_DISABLED 0
 #define PWM 1
 #define SCTL 2
-#define TOTAL_IC 1
+#define TOTAL_IC 5
 #define DEBUGG 0
 /* USER CODE END PD */
 
@@ -150,7 +150,9 @@ UART_HandleTypeDef huart2;
 	\r\nEnter Charging Mode      ----> c\
 	\r\nDebug                    ----> d\
 	\r\nExit Charging Mode       ----> x\
+	\r\nGet Cell Data            ----> g\
 	\r\nSPI Loopback test        ----> l\
+    \r\nVoltage Coll + Calc      ----> v\
 	\r\nSPI Infinite Send        ----> i\
 	\r\nTest 1                   ----> 1\
 	\r\nSPI_COMM_Test            ----> 3\
@@ -244,6 +246,9 @@ int main(void)
   a_d.huart2 = &huart2;
   a_d.htim1 = &htim1;
   a_d.debug = DEBUGG;
+  a_d.v_max = 0;
+  a_d.v_min = 0;
+  a_d.v_avg = 0;
 
   HAL_UART_Receive_IT (&huart2, UART2_rxBuffer, 1);
   //while(1){}//remove once done testing interupts
@@ -254,10 +259,10 @@ int main(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
-  HAL_Delay(1000);
+  HAL_Delay(100);
   //turn off rgb leds
   HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-  HAL_Delay(1000);
+  //HAL_Delay(1000);
   HAL_TIM_Base_Start(&htim1);
   /* USER CODE END 2 */
 
@@ -300,6 +305,13 @@ int main(void)
 		 		case 'l':
 		 			spi_loopback(&stop_flag);
 		 			break;
+		 		case 'g':
+					get_cell_data();
+					break;
+		 		case 'v':
+					coll_cell_volt();
+					volt_calc();
+					break;
 		 		case 'm':
 		 			printf("%s",menu);
 		 			stop_flag=0;
@@ -927,7 +939,7 @@ void print_wrcomm(void)
  *****************************************************************************/
 void print_rxcomm(void)
 {
-   printf("Received Data in COMM register:");
+   printf("Received Data in COMM register: \r\n");
   for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
   {
     //Serial.print(F(" IC- "));
@@ -1026,16 +1038,16 @@ void test4(void){
 		  printf("starting cell voltage reading loop\r\n");
 		  printf("recording wakeup sleep\r\n");
 		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
-		  //wakeup_sleep(TOTAL_IC);
+		  wakeup_sleep(TOTAL_IC);
 		  //printf("pass1\r\n");
-		  //LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+		  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
 		  //printf("pass2\r\n");
-		  //conv_time = LTC6813_pollAdc();
+		  conv_time = LTC6813_pollAdc();
 		  //printf("start ADC waiting 1 seconds\r\n");
 		  //HAL_Delay(1000);
 
 		  //printf("pass3\r\n");
-		 // print_conv_time(conv_time);
+		  print_conv_time(conv_time);
 		  //printf("Cell Voltages:\r\n");
 
 	      wakeup_sleep(TOTAL_IC);
@@ -1065,25 +1077,57 @@ void test5(void){
 }
 
 void volt_calc(void){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
-	int volt_min=1000,volt_max=0,volt_avg=0,total_cells=0;
+	uint16_t volt_min=65535,volt_max=0,volt_avg=0,total_cells=0;
+	uint32_t volt_total=0;
 	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
 	  {
 	    for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++){
-	    	if(volt_min>BMS_IC[current_ic].cells.c_codes[i]*0.0001){
-	    		volt_min = BMS_IC[current_ic].cells.c_codes[i]*0.0001;
+	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+	    	if(BMS_IC[current_ic].cells.c_codes[i]==65535||BMS_IC[current_ic].cells.c_codes[i]==0);
+	    	else if(volt_min>BMS_IC[current_ic].cells.c_codes[i]){
+	    		volt_min = BMS_IC[current_ic].cells.c_codes[i];
 	    	}
-	    	if(volt_max<BMS_IC[current_ic].cells.c_codes[i]*0.0001){
-	    		volt_max=BMS_IC[current_ic].cells.c_codes[i]*0.0001;
+	    	if(BMS_IC[current_ic].cells.c_codes[i]==65535||BMS_IC[current_ic].cells.c_codes[i]==0);
+	    	else if(volt_max<BMS_IC[current_ic].cells.c_codes[i]){
+	    		volt_max=BMS_IC[current_ic].cells.c_codes[i];
 	    	}
-	    	volt_avg += BMS_IC[current_ic].cells.c_codes[i]*0.0001;
-	    	total_cells++;
+	    	if(BMS_IC[current_ic].cells.c_codes[i]!=65535&&BMS_IC[current_ic].cells.c_codes[i]!=0){
+				volt_total += BMS_IC[current_ic].cells.c_codes[i];
+				total_cells++;
+	    	}
 	    }
-	    volt_avg = volt_avg/total_cells;
 	  }
+    //printf("total cells: %d\r\n",total_cells);
+    volt_avg = volt_total/total_cells;
+    //printf("volt total %d, volt_avg %d\r\n",volt_total,volt_avg);
+    //printf("vmax: %d, vmin %d, vavg, %d\r\n",volt_max,volt_min,volt_avg);
+    a_dd.v_max = volt_max;
+    a_dd.v_min = volt_min;
+    a_dd.v_avg = volt_avg;
+}
+
+void coll_cell_volt(void){
+	  wakeup_sleep(TOTAL_IC);
+	  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+	  conv_time = LTC6813_pollAdc();
+	  print_conv_time(conv_time);  //gotta fix this whole part
+
+    wakeup_sleep(TOTAL_IC);
+    error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
+    check_error(error);
+    print_cells(DATALOG_DISABLED);
 }
 
 void temp_calc(void){
 
+}
+
+void get_cell_data(void){
+	printf("\r\nTotal Cells: %d\
+			\r\nTotal IC:    %d\
+			\r\nVolt Min:    %.04f\
+			\r\nVolt Max:    %.04f\
+			\r\nVolt Avg:    %.04f\r\n",a_dd.v_min*.0001,a_dd.v_max*.0001,a_dd.v_avg*.0001);
 }
 
 void init_appdata(app_data *app_data_init)

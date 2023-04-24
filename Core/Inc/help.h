@@ -26,6 +26,12 @@ typedef struct
 	TIM_HandleTypeDef *htim1;
 
 	uint8_t debug;
+
+	uint16_t v_max;
+
+	uint16_t v_min;
+
+	uint16_t v_avg;
 } app_data;
 
 void u_sleep(uint32_t microseconds);
