@@ -18,10 +18,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "usb_host.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,6 +32,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#ifdef __GNUC__
+#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
+#else
+#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
+#endif
+
 #define ENABLED 1
 #define DISABLED 0
 #define DATALOG_ENABLED 1
@@ -39,23 +47,14 @@
 #define SCTL 2
 #define TOTAL_IC 5
 #define DEBUGG 0
+
+#define CHARGING 1
+#define DISCHARGING 2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-//CAN TX:PD1 RX:PD0
-//SPI1  miso:PA6 mosi:PA7 cs:PA4 clk:PA5
-//SPI2 miso:PC2 mosi:PB15 cs: clk:PB13
 
-//fun notes from meeting
-/*ADD HARDWARE NSS TO SPI FOR CHIP SELECT
-
-	motor controller what to send
-  		send can msg of current supply capabilties?
-		gpio go or no go?
-	what pieces of data does lv need from us - what data do we get from cells and how we communicate
-	bms need low id number for high priority info such as availble current
-	 */
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -69,124 +68,160 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart2_rx;
 
+/* Definitions for TempTask */
+osThreadId_t TempTaskHandle;
+const osThreadAttr_t TempTask_attributes = {
+  .name = "TempTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal7,
+};
+/* Definitions for V_Monitor */
+osThreadId_t V_MonitorHandle;
+const osThreadAttr_t V_Monitor_attributes = {
+  .name = "V_Monitor",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityRealtime,
+};
+/* Definitions for CLI */
+osThreadId_t CLIHandle;
+const osThreadAttr_t CLI_attributes = {
+  .name = "CLI",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityRealtime1,
+};
+/* Definitions for uart_mutex */
+osMutexId_t uart_mutexHandle;
+const osMutexAttr_t uart_mutex_attributes = {
+  .name = "uart_mutex"
+};
 /* USER CODE BEGIN PV */
-	// 25AA040A instructions
-	/*const uint8_t EEPROM_READ = 0b00000011;
-	const uint8_t EEPROM_WRITE = 0b00000010;
-	const uint8_t EEPROM_WRDI = 0b00000100;
-	const uint8_t EEPROM_WREN = 0b00000110;
-	const uint8_t EEPROM_RDSR = 0b00000101;
-	const uint8_t EEPROM_WRSR = 0b00000001;*/
-	//int16_t pec15Table[256];
-	int16_t CRC15_POLY = 0x4599;
-	  uint8_t streg=0;
-	  int8_t error = 0;
-	  uint32_t conv_time = 0;
-	  int8_t s_pin_read=0;
-	/********************************************************************
-	 ADC Command Configurations. See LTC681x.h for options(Reference Linduino LTC6813)
-	*********************************************************************/
-	const uint8_t ADC_OPT = ADC_OPT_DISABLED; //!< ADC Mode option bit
-	const uint8_t ADC_CONVERSION_MODE =MD_7KHZ_3KHZ; //!< ADC Mode
-	const uint8_t ADC_DCP = DCP_DISABLED; //!< Discharge Permitted
-	const uint8_t CELL_CH_TO_CONVERT =CELL_CH_ALL; //!< Channel Selection for ADC conversion
-	const uint8_t AUX_CH_TO_CONVERT = AUX_CH_ALL; //!< Channel Selection for ADC conversion
-	const uint8_t STAT_CH_TO_CONVERT = STAT_CH_ALL; //!< Channel Selection for ADC conversion
-	const uint8_t SEL_ALL_REG = REG_ALL; //!< Register Selection
-	const uint8_t SEL_REG_A = REG_1; //!< Register Selection
-	const uint8_t SEL_REG_B = REG_2; //!< Register Selection
+int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
+const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
+const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
+const int current_max = 2;//max current allowed for charging system
+int CCL = 2; // current charge limit - initially the max current a cell can handle
+int DCL = 2; // discharge current limit - initially the max current a cell can handle
+int hall_current = 0;
 
-	const uint16_t MEASUREMENT_LOOP_TIME = 500; //!< Loop Time in milliseconds(ms)
+int16_t CRC15_POLY = 0x4599;
+  uint8_t streg=0;
+  int8_t error = 0;
+  uint32_t conv_time = 0;
+  int8_t s_pin_read=0;
+/********************************************************************
+ ADC Command Configurations. See LTC681x.h for options(Reference Linduino LTC6813)
+*********************************************************************/
+const uint8_t ADC_OPT = ADC_OPT_DISABLED; //!< ADC Mode option bit
+const uint8_t ADC_CONVERSION_MODE =MD_7KHZ_3KHZ; //!< ADC Mode
+const uint8_t ADC_DCP = DCP_DISABLED; //!< Discharge Permitted
+const uint8_t CELL_CH_TO_CONVERT =CELL_CH_ALL; //!< Channel Selection for ADC conversion
+const uint8_t AUX_CH_TO_CONVERT = AUX_CH_ALL; //!< Channel Selection for ADC conversion
+const uint8_t STAT_CH_TO_CONVERT = STAT_CH_ALL; //!< Channel Selection for ADC conversion
+const uint8_t SEL_ALL_REG = REG_ALL; //!< Register Selection
+const uint8_t SEL_REG_A = REG_1; //!< Register Selection
+const uint8_t SEL_REG_B = REG_2; //!< Register Selection
 
-	//Under Voltage and Over Voltage Thresholds
-	const uint16_t OV_THRESHOLD = 41000; //!< Over voltage threshold ADC Code. LSB = 0.0001 ---(4.1V)
-	const uint16_t UV_THRESHOLD = 30000; //!< Under voltage threshold ADC Code. LSB = 0.0001 ---(3V)
+const uint16_t MEASUREMENT_LOOP_TIME = 500; //!< Loop Time in milliseconds(ms)
 
-	//Loop Measurement Setup. These Variables are ENABLED or DISABLED. Remember ALL CAPS
-	const uint8_t WRITE_CONFIG = DISABLED;  //!< This is to ENABLED or DISABLED writing into to configuration registers in a continuous loop
-	const uint8_t READ_CONFIG = DISABLED; //!< This is to ENABLED or DISABLED reading the configuration registers in a continuous loop
-	const uint8_t MEASURE_CELL = ENABLED; //!< This is to ENABLED or DISABLED measuring the cell voltages in a continuous loop
-	const uint8_t MEASURE_AUX = DISABLED; //!< This is to ENABLED or DISABLED reading the auxiliary registers in a continuous loop
-	const uint8_t MEASURE_STAT = DISABLED; //!< This is to ENABLED or DISABLED reading the status registers in a continuous loop
-	const uint8_t PRINT_PEC = DISABLED; //!< This is to ENABLED or DISABLED printing the PEC Error Count in a continuous loop
-	/************************************
-	  END SETUP
-	*************************************/
-	/*******************************************************
-	 Global Battery Variables received from 681x commands
-	 These variables store the results from the LTC6813
-	 register reads and the array lengths must be based
-	 on the number of ICs on the stack
-	 ******************************************************/
-	cell_asic BMS_IC[TOTAL_IC]; //!< Global Battery Variable
+//Under Voltage and Over Voltage Thresholds
+const uint16_t OV_THRESHOLD = 41000; //!< Over voltage threshold ADC Code. LSB = 0.0001 ---(4.1V)
+const uint16_t UV_THRESHOLD = 30000; //!< Under voltage threshold ADC Code. LSB = 0.0001 ---(3V)
 
-	/*************************************************************************
-	 Set configuration register. Refer to the data sheet
-	**************************************************************************/
-	uint8_t REFON = 1; //!< Reference Powered Up Bit
-	uint8_t ADCOPT = 0; //!< ADC Mode option bit
-	uint8_t GPIOBITS_A[5] = {0,0,1,1,1}; //!< GPIO Pin Control // Gpio 1,2,3,4,5
-	uint8_t GPIOBITS_B[4] = {0,0,0,0}; //!< GPIO Pin Control // Gpio 6,7,8,9
-	uint16_t UV=UV_THRESHOLD; //!< Under voltage Comparison Voltage
-	uint16_t OV=OV_THRESHOLD; //!< Over voltage Comparison Voltage
-	uint8_t DCCBITS_A[12] = {0,0,0,0,0,0,0,0,0,0,0,0}; //!< Discharge cell switch //Dcc 1,2,3,4,5,6,7,8,9,10,11,12
-	uint8_t DCCBITS_B[7]= {0,0,0,0,0,0,0}; //!< Discharge cell switch //Dcc 0,13,14,15
-	uint8_t DCTOBITS[4] = {1,0,1,0}; //!< Discharge time value //Dcto 0,1,2,3  // Programed for 4 min
-	/*Ensure that Dcto bits are set according to the required discharge time. Refer to the data sheet */
-	uint8_t FDRF = 0; //!< Force Digital Redundancy Failure Bit
-	uint8_t DTMEN = 1; //!< Enable Discharge Timer Monitor
-	uint8_t PSBITS[2]= {0,0}; //!< Digital Redundancy Path Selection//ps-0,1
+//Loop Measurement Setup. These Variables are ENABLED or DISABLED. Remember ALL CAPS
+const uint8_t WRITE_CONFIG = DISABLED;  //!< This is to ENABLED or DISABLED writing into to configuration registers in a continuous loop
+const uint8_t READ_CONFIG = DISABLED; //!< This is to ENABLED or DISABLED reading the configuration registers in a continuous loop
+const uint8_t MEASURE_CELL = ENABLED; //!< This is to ENABLED or DISABLED measuring the cell voltages in a continuous loop
+const uint8_t MEASURE_AUX = DISABLED; //!< This is to ENABLED or DISABLED reading the auxiliary registers in a continuous loop
+const uint8_t MEASURE_STAT = DISABLED; //!< This is to ENABLED or DISABLED reading the status registers in a continuous loop
+const uint8_t PRINT_PEC = DISABLED; //!< This is to ENABLED or DISABLED printing the PEC Error Count in a continuous loop
+/************************************
+  END SETUP
+*************************************/
+/*******************************************************
+ Global Battery Variables received from 681x commands
+ These variables store the results from the LTC6813
+ register reads and the array lengths must be based
+ on the number of ICs on the stack
+ ******************************************************/
+cell_asic BMS_IC[TOTAL_IC]; //!< Global Battery Variable
 
-	uint8_t UART2_rxBuffer[1] = {0};
+/*************************************************************************
+ Set configuration register. Refer to the data sheet
+**************************************************************************/
+uint8_t REFON = 1; //!< Reference Powered Up Bit
+uint8_t ADCOPT = 0; //!< ADC Mode option bit
+uint8_t GPIOBITS_A[5] = {0,0,1,1,1}; //!< GPIO Pin Control // Gpio 1,2,3,4,5
+uint8_t GPIOBITS_B[4] = {0,0,0,0}; //!< GPIO Pin Control // Gpio 6,7,8,9
+uint16_t UV=UV_THRESHOLD; //!< Under voltage Comparison Voltage
+uint16_t OV=OV_THRESHOLD; //!< Over voltage Comparison Voltage
+uint8_t DCCBITS_A[12] = {0,0,0,0,0,0,0,0,0,0,0,0}; //!< Discharge cell switch //Dcc 1,2,3,4,5,6,7,8,9,10,11,12
+uint8_t DCCBITS_B[7]= {0,0,0,0,0,0,0}; //!< Discharge cell switch //Dcc 0,13,14,15
+uint8_t DCTOBITS[4] = {1,0,1,0}; //!< Discharge time value //Dcto 0,1,2,3  // Programed for 4 min
+/*Ensure that Dcto bits are set according to the required discharge time. Refer to the data sheet */
+uint8_t FDRF = 0; //!< Force Digital Redundancy Failure Bit
+uint8_t DTMEN = 1; //!< Enable Discharge Timer Monitor
+uint8_t PSBITS[2]= {0,0}; //!< Digital Redundancy Path Selection//ps-0,1
 
-	uint8_t stop_flag = 0;
-	uint8_t uart_cmd = 0;
+uint8_t UART2_rxBuffer[1] = {0};
 
-	// Menu string to display menu to user
-	char menu[500] = {"\
-	\r\n============ stm32-cli =============\
-	\r\nPrint Menu               ----> m\
-	\r\nEnter Charging Mode      ----> c\
-	\r\nDebug                    ----> d\
-	\r\nExit Charging Mode       ----> x\
-	\r\nGet Cell Data            ----> g\
-	\r\nSPI Loopback test        ----> l\
-    \r\nVoltage Coll + Calc      ----> v\
-	\r\nSPI Infinite Send        ----> i\
-	\r\nTest 1                   ----> 1\
-	\r\nSPI_COMM_Test            ----> 3\
-	\r\nTest 4                   ----> 4\
-	\r\nTest 5                   ----> 5\
-	\r\nOr, press button for accel. data.\
-	\r\nType your option here: \r\n\r\n"};
+uint8_t stop_flag = 0;
+uint8_t uart_cmd = 0;
 
-	static app_data a_dd;
+//uart cli
+uint8_t cli_msg_pending;
+uint8_t command_len;
+uint16_t cyp_cmd_tail;
+uint16_t cyp_cmd_head;
+uint8_t command_buf[RXBUF_SIZE];
+uint8_t rx_buf[RXBUF_SIZE];
+uint8_t tx_buf[TXBUF_SIZE];
+
+uint8_t m2mOn = 0;
+
+char err_msg[MSG_LEN];
+char prnt_msg[MSG_LEN];
+
+static const char *MSG_HELP_START
+    = "<-- Help Menu: CMD Name - Description -->\r\n";
+static const char *MSG_HELP_END
+    = "<--------------------------------------->\r\n";
+static const char *ERR_ARG_COUNT
+    = "nERR: Expected %d arguments but received %d\r\n";
+static const char *ERR_BAD_COMMAND
+    = "ERR: Unrecognized command. Type \"help\" for help\r\n";
+
+static const sc_command console_commands[] = {
+    {"help",   "Displays list of all available CLI commands",  cli_help          },
+};
+
+static app_data a_dd;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_CAN1_Init(void);
+static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
-static void MX_SPI2_Init(void);
-static void MX_USART2_UART_Init(void);
-static void MX_TIM1_Init(void);
 static void MX_ADC1_Init(void);
-void MX_USB_HOST_Process(void);
+static void MX_CAN1_Init(void);
+static void MX_SPI2_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_USART2_UART_Init(void);
+void Start_Temp_Mon(void *argument);
+void Start_V_Mon(void *argument);
+void CLI_START(void *argument);
 
 /* USER CODE BEGIN PFP */
-uint32_t DWT_Delay_Init(void);
-//void cmd_6813(uint8_t tx_cmd[2]);
-
-
-
-#ifdef __GNUC__
-#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#else
-#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-#endif
+PUTCHAR_PROTOTYPE
+{
+  /* Place your implementation of fputc here */
+  /* e.g. write a character to the USART1 and Loop until the end of transmission */
+  HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+  return ch;
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -201,7 +236,7 @@ uint32_t DWT_Delay_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  app_data a_d;
+	app_data a_d;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -219,6 +254,7 @@ int main(void)
   }
   LTC6813_reset_crc_count(TOTAL_IC,BMS_IC);
   LTC6813_init_reg_limits(TOTAL_IC,BMS_IC);
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -230,103 +266,85 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_CAN1_Init();
+  MX_DMA_Init();
   MX_SPI1_Init();
-  MX_SPI2_Init();
-  MX_USB_HOST_Init();
-  MX_USART2_UART_Init();
-  MX_TIM1_Init();
   MX_ADC1_Init();
+  MX_CAN1_Init();
+  MX_SPI2_Init();
+  MX_TIM1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-  DWT_Delay_Init();
-  printf("broke\r\n");
   a_d.hcan1 = &hcan1;
   a_d.hspi1 = &hspi2;//flip back
   a_d.hspi2 = &hspi2;//flip bakc
   a_d.huart2 = &huart2;
+  a_d.hdma_usart2_rx = &hdma_usart2_rx;
   a_d.htim1 = &htim1;
   a_d.debug = DEBUGG;
   a_d.v_max = 0;
   a_d.v_min = 0;
   a_d.v_avg = 0;
 
-  HAL_UART_Receive_IT (&huart2, UART2_rxBuffer, 1);
-  //while(1){}//remove once done testing interupts
   init_appdata(&a_d);
-  printf("\r\nStarting Code\r\n");
 
-  // CS pin should default high
+  printf("LETSS GOOOOOOO\r\n");
+
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
-  HAL_Delay(100);
-  //turn off rgb leds
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-  //HAL_Delay(1000);
   HAL_TIM_Base_Start(&htim1);
+  //HAL_UART_Receive_IT (&huart2, UART2_rxBuffer, 1);
+  __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+  HAL_UART_Receive_DMA(&huart2, rx_buf, RXBUF_SIZE);
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of uart_mutex */
+  uart_mutexHandle = osMutexNew(&uart_mutex_attributes);
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of TempTask */
+  TempTaskHandle = osThreadNew(Start_Temp_Mon, NULL, &TempTask_attributes);
+
+  /* creation of V_Monitor */
+  V_MonitorHandle = osThreadNew(Start_V_Mon, NULL, &V_Monitor_attributes);
+
+  /* creation of CLI */
+  CLIHandle = osThreadNew(CLI_START, NULL, &CLI_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  //printf("entered the while\r\n");
-	  if(UART2_rxBuffer[0] !=0){
-		 //stop_flag=1;//check to see if interrupt will start running multiple tests at the same time if not running
-		  switch(UART2_rxBuffer[0]){
-		 		case '1':
-		 			//run test 1
-		 			test1();
-		 			break;
-		 		case 'i':
-		 			spi_infinite_send(&stop_flag);
-		 			break;
-		 		case '3':
-		 			spi_comm_test();
-		 			break;
-		 		case '4':
-		 			test4();
-		 			break;
-		 		case '5':
-		 			/*printf("start sleep\r\n");
-		 			__HAL_TIM_SET_COUNTER(&htim1,0);  // set the counter value a 0
-		 			while (__HAL_TIM_GET_COUNTER(&htim1) < 300){
-		 				printf("%lu\r\n",__HAL_TIM_GET_COUNTER(&htim1));
-		 			}
-		 			printf("end sleep\r\n");*/
-					test5();
-					break;
-		 		case 'c':
-		 			charging_mode();
-		 			break;
-		 		case'x':
-		 			discharge_mode();
-		 			break;
-		 		case 'l':
-		 			spi_loopback(&stop_flag);
-		 			break;
-		 		case 'g':
-					get_cell_data();
-					break;
-		 		case 'v':
-					coll_cell_volt();
-					volt_calc();
-					break;
-		 		case 'm':
-		 			printf("%s",menu);
-		 			stop_flag=0;
-		 			break;
-		 		default:
-		 			printf("we dont like that command\r\n");
-		     }
-		     printf("stop flag: %d\r\n",stop_flag);
-		     printf("UART2_rxBuffer: %x\r\n",UART2_rxBuffer[0]);
-
-
-		     UART2_rxBuffer[0]=0;
-	  }
     /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
   }
@@ -417,7 +435,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
   */
-  sConfig.Channel = ADC_CHANNEL_11;
+  sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
   sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
@@ -446,14 +464,14 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 6;
+  hcan1.Init.Prescaler = 16;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_11TQ;
-  hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
-  hcan1.Init.AutoBusOff = ENABLE;
-  hcan1.Init.AutoWakeUp = ENABLE;
+  hcan1.Init.AutoBusOff = DISABLE;
+  hcan1.Init.AutoWakeUp = DISABLE;
   hcan1.Init.AutoRetransmission = DISABLE;
   hcan1.Init.ReceiveFifoLocked = DISABLE;
   hcan1.Init.TransmitFifoPriority = DISABLE;
@@ -487,10 +505,10 @@ static void MX_SPI1_Init(void)
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_HIGH;
-  hspi1.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -562,7 +580,7 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 167;
+  htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim1.Init.Period = 65535;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -623,6 +641,22 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -642,24 +676,27 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, CS_I2C_SPI_Pin|GPIO_PIN_7|GPIO_PIN_8, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(CS_I2C_SPI_GPIO_Port, CS_I2C_SPI_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIO_CS_GPIO_Port, GPIO_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
                           |Audio_RST_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : CS_I2C_SPI_Pin PE7 */
-  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin|GPIO_PIN_7;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : CS_I2C_SPI_Pin */
+  GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  HAL_GPIO_Init(CS_I2C_SPI_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OTG_FS_PowerSwitchOn_Pin */
   GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin;
@@ -676,31 +713,24 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(PDM_OUT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : GPIO_CS_Pin */
-  GPIO_InitStruct.Pin = GPIO_CS_Pin;
+  /*Configure GPIO pin : B1_Pin */
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIO_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : BOOT1_Pin */
   GPIO_InitStruct.Pin = BOOT1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BOOT1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PE8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_8;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CLK_IN_Pin */
   GPIO_InitStruct.Pin = CLK_IN_Pin;
@@ -727,6 +757,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : VBUS_FS_Pin */
+  GPIO_InitStruct.Pin = VBUS_FS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(VBUS_FS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : OTG_FS_ID_Pin OTG_FS_DM_Pin OTG_FS_DP_Pin */
+  GPIO_InitStruct.Pin = OTG_FS_ID_Pin|OTG_FS_DM_Pin|OTG_FS_DP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : OTG_FS_OverCurrent_Pin */
   GPIO_InitStruct.Pin = OTG_FS_OverCurrent_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -741,395 +785,24 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PB7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pin : MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = MEMS_INT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(MEMS_INT2_GPIO_Port, &GPIO_InitStruct);
 
-  /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-
-uint32_t DWT_Delay_Init(void)
-{
-    /* Disable TRC */
-    CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
-    /* Enable TRC */
-    CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
-
-    /* Disable clock cycle counter */
-    DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
-    /* Enable  clock cycle counter */
-    DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
-
-    /* Reset the clock cycle counter value */
-    DWT->CYCCNT = 0;
-
-    /* 3 NO OPERATION instructions */
-    __ASM volatile ("NOP");
-    __ASM volatile ("NOP");
-    __ASM volatile ("NOP");
-
-    /* Check if clock cycle counter has started */
-    if(DWT->CYCCNT)
-    {
-       return 0; /*clock cycle counter started*/
-    }
-    else
-    {
-      return 1; /*clock cycle counter not started*/
-    }
-}
-
-
-PUTCHAR_PROTOTYPE
-{
-  /* Place your implementation of fputc here */
-  /* e.g. write a character to the USART1 and Loop until the end of transmission */
-  HAL_UART_Transmit(&huart2, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
-  return ch;
-}
-
-int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
-const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
-const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
-const int current_max = 2;//max current allowed for charging system
-int CCL = 2; // current charge limit - initially the max current a cell can handle
-int DCL = 2; // discharge current limit - initially the max current a cell can handle
-int hall_current = 0;
-#define CHARGING 1
-#define DISCHARGING 2
-//assign AIR to GPIO PIN
-void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
-	while(mode_flag==CHARGING){
-		//check if charge current limit >0
-		if(CCL>0){
-			//ADC of hall effect-at pin PC1
-			if(hall_current>=CCL+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
-
-			}
-			else{
-				//allow charging to continue - repeats the loop
-			}
-		}
-		else{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
-		}
-	}
-}
-
-void discharge_mode(){//default mode ~when GPIO Signal is low
-	while(mode_flag==DISCHARGING){
-		//check if discharge current limit >0
-		if(DCL>0){
-			if(hall_current < DCL+2){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
-			}
-			else{
-
-			}
-		}
-		else{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
-		}
-	}
-}
-
-void print_conv_time(uint32_t conv_time)
-{
-  uint16_t m_factor=1000;  // to print in ms
-
-  //Serial.print(F("Conversion completed in:"));
-  //Serial.print(((float)conv_time/m_factor), 1);
-  //Serial.println(F("ms \n"));
-  printf("Conversion completed in %f ms\r\n",(float)conv_time/m_factor);
-}
-
-void check_error(int error)
-{
-  if (error == -1)
-  {
-    printf("A PEC error was detected in the received data\r\n");
-  }
-}
-
-void print_cells(uint8_t datalog_en)
-{
-  for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
-  {
-    if (datalog_en == 0)
-    {
-      //Serial.print(" IC ");
-      //Serial.print(current_ic+1,DEC);
-      //Serial.print(", ");
-      printf(" IC %d,",current_ic+1);
-      for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++)
-      {
-        //Serial.print(" C");
-        //Serial.print(i+1,DEC);
-        //Serial.print(":");
-        //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
-        //Serial.print(",");
-        printf(" C%d:%.4f,",i+1,BMS_IC[current_ic].cells.c_codes[i]*0.0001);
-      }
-      //Serial.println();
-      printf("\r\n");
-    }
-    else
-    {
-      //Serial.print(" Cells, ");
-      printf(" Cells, ");
-      for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++)
-      {
-        //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
-        //Serial.print(",");
-        printf("%f,",BMS_IC[current_ic].cells.c_codes[i]*0.0001);
-      }
-    }
-  }
-  //Serial.println("\n");
-  printf("\r\n");
-}
-
-/*!****************************************************************************
-  \brief prints data which is written on COMM register onto the serial port
-  @return void
- *****************************************************************************/
-void print_wrcomm(void)
-{
- int comm_pec;
-
-  //Serial.println(F("Written Data in COMM Register: "));
-  printf("Written Data in COMM Register: \r\n");
-  for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
-  {
-    //Serial.print(F(" IC- "));
-    //Serial.print(current_ic+1,DEC);
-    printf(" IC- %d",current_ic+1);
-
-    for(int i = 0; i < 6; i++)
-    {
-      //Serial.print(F(", 0x"));
-      //serial_print_hex(BMS_IC[current_ic].com.tx_data[i]);
-      printf(", %x",BMS_IC[current_ic].com.tx_data[i]);
-    }
-    //Serial.print(F(", Calculated PEC: 0x"));
-    printf(", Calculated PEC: ");
-    comm_pec = pec15_calc(6,&BMS_IC[current_ic].com.tx_data[0]);
-    //serial_print_hex((uint8_t)(comm_pec>>8));
-    printf("%x",comm_pec>>8);
-    //Serial.print(F(", 0x"));
-    //serial_print_hex((uint8_t)(comm_pec));
-    printf(", %x\r\n",comm_pec);
-    //Serial.println("\n");
-  }
-}
-
-/*!****************************************************************************
-  \brief Prints received data from COMM register onto the serial port
-  @return void
- *****************************************************************************/
-void print_rxcomm(void)
-{
-   printf("Received Data in COMM register: \r\n");
-  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
-  {
-    //Serial.print(F(" IC- "));
-    //Serial.print(current_ic+1,DEC);
-    printf(" IC- %d",current_ic+1);
-
-    for(int i = 0; i < 6; i++)
-    {
-      //Serial.print(F(", 0x"));
-      //serial_print_hex(BMS_IC[current_ic].com.rx_data[i]);
-      printf(", %x",BMS_IC[current_ic].com.rx_data[i]);
-    }
-    //Serial.print(F(", Received PEC: 0x"));
-    //serial_print_hex(BMS_IC[current_ic].com.rx_data[6]);
-    //Serial.print(F(", 0x"));
-    //serial_print_hex(BMS_IC[current_ic].com.rx_data[7]);
-    //Serial.println("\n");
-    printf(", Received PEC: %x, %x\r\n",BMS_IC[current_ic].com.rx_data[6],BMS_IC[current_ic].com.rx_data[7]);
-  }
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    HAL_UART_Transmit(&huart2, UART2_rxBuffer, 1, 100);
-    HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, 1);
-	 if(stop_flag==1){
-		stop_flag=0;
-	 }
-	 else{
-		stop_flag=1;
-	 }
-}
-
-void test1(void){
-	printf("\r\n entering test1\r\n;");
-	  char spi_tx_buffer[200];
-	  char spi_rx_buffer[200];
-	  uint16_t spi_transfer_size = 200;
-	  while (stop_flag)//stop_flag)
-	  {
-		  for(int i = 0; i<200; i++){
-			  spi_tx_buffer[i] = i;
-		  }
-	         //printf("Hello World\n\r");//wont see until uart to usb recieved
-	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	   	  HAL_SPI_TransmitReceive(&hspi2, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
-	   	//spi_write_read(spi_tx_buffer,200,spi_rx_buffer,200);
-	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-	   	  for(int i = 0; i<200; i++){
-	   		  printf("%d ",spi_rx_buffer[i]);
-	   	  }
-	         //turn off rgb leds
-	         //HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-
-	         HAL_Delay(1000);
-		}
-	  printf("\r\n exiting test1\r\n;");
-}
-
-void spi_comm_test(void){
-	printf("\r\n entering test3\r\n;");
-	  //while(stop_flag){
-		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
-	      for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
-	      {
-	        //Communication control bits and communication data bytes. Refer to the data sheet.
-	        BMS_IC[current_ic].com.tx_data[0]= 0x81; // Icom CSBM Low(8) + data D0 (0x11)
-	        BMS_IC[current_ic].com.tx_data[1]= 0x10; // Fcom CSBM Low(0)
-	        BMS_IC[current_ic].com.tx_data[2]= 0xA2; // Icom CSBM Falling Edge (A) + data D1 (0x25)
-	        BMS_IC[current_ic].com.tx_data[3]= 0x50; // Fcom CSBM Low(0)
-	        BMS_IC[current_ic].com.tx_data[4]= 0xA1; // Icom CSBM Falling Edge (A) + data D2 (0x17)
-	        BMS_IC[current_ic].com.tx_data[5]= 0x79; // Fcom CSBM High(9)
-	      }
-	      wakeup_sleep(TOTAL_IC);
-	      LTC6813_wrcomm(TOTAL_IC,BMS_IC);
-	      //print_wrcomm();
-
-	      wakeup_idle(TOTAL_IC);
-	      LTC6813_stcomm(3);
-
-	      wakeup_idle(TOTAL_IC);
-	      error = LTC6813_rdcomm(TOTAL_IC,BMS_IC);
-	      check_error(error);
-	      print_wrcomm();
-	      print_rxcomm();
-	      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
-	      //HAL_Delay(1000);
-	  //}
-	  printf("\r\n exiting test3\r\n;");
-}
-
-void test4(void){
-	printf("\r\n entering test4\r\n;");
-	  //while (stop_flag)
-	  //{
-		  printf("starting cell voltage reading loop\r\n");
-		  printf("recording wakeup sleep\r\n");
-		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
-		  wakeup_sleep(TOTAL_IC);
-		  //printf("pass1\r\n");
-		  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
-		  //printf("pass2\r\n");
-		  conv_time = LTC6813_pollAdc();
-		  //printf("start ADC waiting 1 seconds\r\n");
-		  //HAL_Delay(1000);
-
-		  //printf("pass3\r\n");
-		  print_conv_time(conv_time);
-		  //printf("Cell Voltages:\r\n");
-
-	      wakeup_sleep(TOTAL_IC);
-	      error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
-	      check_error(error);
-	      print_cells(DATALOG_DISABLED);
-	      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
-	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
-	      HAL_Delay(1000);
-	      //turn off rgb leds
-	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
-	      //HAL_Delay(1000);
-	  //}
-	  printf("\r\n exiting test4\r\n;");
-}
-
-void test5(void){
-	printf("starting sleep\r\n");
-	for(int i=0;i<10;i++){
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-		u_sleep(300);
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-		u_sleep(300);
-	}
-
-	printf("ending sleep\r\n");
-}
-
-void volt_calc(void){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
-	uint16_t volt_min=65535,volt_max=0,volt_avg=0,total_cells=0;
-	uint32_t volt_total=0;
-	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
-	  {
-	    for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++){
-	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);
-	    	if(BMS_IC[current_ic].cells.c_codes[i]==65535||BMS_IC[current_ic].cells.c_codes[i]==0);
-	    	else if(volt_min>BMS_IC[current_ic].cells.c_codes[i]){
-	    		volt_min = BMS_IC[current_ic].cells.c_codes[i];
-	    	}
-	    	if(BMS_IC[current_ic].cells.c_codes[i]==65535||BMS_IC[current_ic].cells.c_codes[i]==0);
-	    	else if(volt_max<BMS_IC[current_ic].cells.c_codes[i]){
-	    		volt_max=BMS_IC[current_ic].cells.c_codes[i];
-	    	}
-	    	if(BMS_IC[current_ic].cells.c_codes[i]!=65535&&BMS_IC[current_ic].cells.c_codes[i]!=0){
-				volt_total += BMS_IC[current_ic].cells.c_codes[i];
-				total_cells++;
-	    	}
-	    }
-	  }
-    //printf("total cells: %d\r\n",total_cells);
-    volt_avg = volt_total/total_cells;
-    //printf("volt total %d, volt_avg %d\r\n",volt_total,volt_avg);
-    //printf("vmax: %d, vmin %d, vavg, %d\r\n",volt_max,volt_min,volt_avg);
-    a_dd.v_max = volt_max;
-    a_dd.v_min = volt_min;
-    a_dd.v_avg = volt_avg;
-}
-
-void coll_cell_volt(void){
-	  wakeup_sleep(TOTAL_IC);
-	  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
-	  conv_time = LTC6813_pollAdc();
-	  print_conv_time(conv_time);  //gotta fix this whole part
-
-    wakeup_sleep(TOTAL_IC);
-    error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
-    check_error(error);
-    print_cells(DATALOG_DISABLED);
-}
-
-void temp_calc(void){
-
-}
-
-void get_cell_data(void){
-	printf("\r\nTotal Cells: %d\
-			\r\nTotal IC:    %d\
-			\r\nVolt Min:    %.04f\
-			\r\nVolt Max:    %.04f\
-			\r\nVolt Avg:    %.04f\r\n",a_dd.v_min*.0001,a_dd.v_max*.0001,a_dd.v_avg*.0001);
-}
-
 void init_appdata(app_data *app_data_init)
 {
 	a_dd = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files
@@ -1152,8 +825,246 @@ void init_appdata(app_data *app_data_init)
 	init_app_data_6813(&a_dd);
 	init_app_data_help(&a_dd);
 }
-
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_Start_Temp_Mon */
+/**
+  * @brief  Function implementing the TempTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_Start_Temp_Mon */
+void Start_Temp_Mon(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+	  //printf("hi\r\n");
+    osDelay(500);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_Start_V_Mon */
+/**
+* @brief Function implementing the V_Monitor thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Start_V_Mon */
+void Start_V_Mon(void *argument)
+{
+  /* USER CODE BEGIN Start_V_Mon */
+  /* Infinite loop */
+  for(;;)
+  {
+	  //printf("boogers\r\n");
+    osDelay(1200);
+  }
+  /* USER CODE END Start_V_Mon */
+}
+
+/* USER CODE BEGIN Header_CLI_START */
+
+uint8_t get_cli_msg_pending() {
+    return cli_msg_pending;
+}
+
+void cli_handle_command(char *_command) {
+    uint8_t cmd_found = 0;
+    uint16_t nargs = 0;
+    char *ptr;
+    char *args[ARGS_COUNT_MAX];
+    // Parse arguemtns (space delimited)
+    args[nargs++] = _command;
+    ptr           = strpbrk(_command, " ");
+    while(ptr != NULL) {
+        args[nargs] = ptr + 1;
+        *ptr        = '\0';
+        ptr         = strpbrk(args[nargs], " ");
+        nargs++;
+        if(nargs == ARGS_COUNT_MAX) {
+            break;
+        }
+    }
+    // Print newline after msg
+    cli_puts("\r\n");
+    // Iterate over list of console comands
+    for(int i = 0; i < COUNTOF(console_commands); i++) {
+        if(strcmp(_command, console_commands[i].cmdName) == 0) {
+            console_commands[i].cbFunc(nargs - 1, args);
+            cmd_found = 1;
+            break;
+        }
+    }
+
+    if(cmd_found == 0 && strlen(_command) > 0) {
+        snprintf(err_msg, MSG_LEN, ERR_BAD_COMMAND);
+        cli_puts(err_msg);
+    }
+}
+
+int cli_puts(const char *str) {
+    int ret = -1;
+    if(osMutexAcquire(uart_mutexHandle, 1000) == osOK) {
+        ret = 0;
+        for(int i = 0; i < strlen(str); i++) {
+            if(putchar(str[i]) != str[i]) {
+                ret = -1;
+            }
+        }
+        osMutexRelease(uart_mutexHandle);
+    }
+    return ret;
+}
+
+int cli_putc(const char str) {
+    int ret = -1;
+    if(osMutexAcquire(uart_mutexHandle, 1000) == osOK) {
+        ret = 0;
+            if(putchar(str) != str) {
+                ret = -1;
+                printf("failed\r\n");
+            }
+        osMutexRelease(uart_mutexHandle);
+    }
+    return ret;
+}
+
+static void cli_help(uint8_t nargs, char **args) {
+    // Iterate over list of console commands
+    cli_puts(MSG_HELP_START);
+    for(int i = 0; i < COUNTOF(console_commands); i++) {
+        snprintf(prnt_msg,
+                 MSG_LEN,
+                 "%s - %s\r\n",
+                 console_commands[i].cmdName,
+                 console_commands[i].cmdDesc);
+        cli_puts(prnt_msg);
+    }
+    cli_puts(MSG_HELP_END);
+}
+
+void cli_process_data(uint8_t _head, uint8_t _tail) {
+    // If circular buffer does not wrap around
+    if(_head > _tail) {
+        while(_tail < _head) {
+            rx_byte(rx_buf[_tail]);
+            _tail++;
+        }
+    }
+    // If circular buffer wraps around
+    else if(_head < _tail) {
+        // Read to end of buffer
+        while(_tail < RXBUF_SIZE) {
+            rx_byte(rx_buf[_tail]);
+            _tail++;
+        }
+        // Read from front of buffer to head
+        _tail = 0;
+        while(_tail < _head) {
+            rx_byte(rx_buf[_tail]);
+            _tail++;
+        }
+    }
+}
+uint8_t space =' ';
+static void rx_byte(char cRxByte) {
+    // End of message = Return carriage '\r'
+    if(cRxByte == '\r') {
+        cli_puts("\r\n");
+        command_len = 0;
+        cli_msg_pending = 1;
+    }
+    // If the received character is delete or backspace
+    else if(cRxByte == 0x7f || cRxByte == 0x08) {
+        // Decrement index and clear out previous character
+        command_len--;
+        command_buf[command_len] = 0x00;
+        if(m2mOn == 0) {
+           // putchar(cRxByte);
+            //printf("%c",cRxByte);
+            //cli_putc(cRxByte);
+            HAL_UART_Transmit(&huart2,&cRxByte,1,500);
+            HAL_UART_Transmit(&huart2,&space,1,500);
+            HAL_UART_Transmit(&huart2,&cRxByte,1,500);
+        }
+    }
+    // Print newline char to terminal
+    else if(cRxByte == '\n') {
+        if(m2mOn == 0) {
+           // putchar(cRxByte);
+            //printf("%c",cRxByte);
+        	 cli_putc(cRxByte);
+        }
+    }
+    // Not end of message; keep appending
+    else {
+        command_buf[command_len] = cRxByte;
+        command_len++;
+        if(m2mOn == 0) {
+           // putchar(cRxByte);
+            //printf("%c\r\n",cRxByte);
+            HAL_UART_Transmit(&huart2,&cRxByte,1,500);
+        	 //cli_putc(cRxByte);
+
+        	 //printf("inside \r\n");
+        }
+    }
+}
+
+/**
+* @brief Function implementing the CLI thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_CLI_START */
+void CLI_START(void *argument)
+{
+  /* USER CODE BEGIN CLI_START */
+	APP_CMD_t new_cmd;
+  /* Infinite loop */
+  for(;;)
+  {
+	xTaskNotifyWait(0, 0, NULL, HAL_MAX_DELAY);
+    if(get_cli_msg_pending() == 1) {
+        taskENTER_CRITICAL();
+
+        for(uint8_t i = 0; i < RXBUF_SIZE; i++) {
+            new_cmd.COMMAND[i] = command_buf[i];
+        }
+        memset(command_buf, 0, RXBUF_SIZE);
+        taskEXIT_CRITICAL();
+
+        cli_handle_command(new_cmd.COMMAND);
+        cli_msg_pending = 0;
+
+    }
+  }
+  /* USER CODE END CLI_START */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM2 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM2) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

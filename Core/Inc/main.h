@@ -32,7 +32,8 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "LTC6813.h"
-#include "help.h"
+#include "cmsis_os.h"
+//#include "help.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -70,6 +71,9 @@ void coll_cell_volt(void);
 void temp_calc(void);
 void volt_calc(void);
 void get_cell_data(void);
+static void cli_help(uint8_t nargs, char **args);
+static void rx_byte(char cRxByte);
+int cli_putc(const char str);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE END EFP */
 
@@ -88,8 +92,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 #define OTG_FS_PowerSwitchOn_GPIO_Port GPIOC
 #define PDM_OUT_Pin GPIO_PIN_3
 #define PDM_OUT_GPIO_Port GPIOC
-#define GPIO_CS_Pin GPIO_PIN_4
-#define GPIO_CS_GPIO_Port GPIOA
+#define B1_Pin GPIO_PIN_0
+#define B1_GPIO_Port GPIOA
+#define SPI1_SCK_Pin GPIO_PIN_5
+#define SPI1_SCK_GPIO_Port GPIOA
+#define SPI1_MISO_Pin GPIO_PIN_6
+#define SPI1_MISO_GPIO_Port GPIOA
+#define SPI1_MOSI_Pin GPIO_PIN_7
+#define SPI1_MOSI_GPIO_Port GPIOA
 #define BOOT1_Pin GPIO_PIN_2
 #define BOOT1_GPIO_Port GPIOB
 #define CLK_IN_Pin GPIO_PIN_10
