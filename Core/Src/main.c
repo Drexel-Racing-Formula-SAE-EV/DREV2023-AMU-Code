@@ -1114,16 +1114,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
-const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
-const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
-const int current_max = 2;//max current allowed for charging system
-int CCL = 2; // current charge limit - initially the max current a cell can handle
-int DCL = 2; // discharge current limit - initially the max current a cell can handle
-int hall_current = 0;
-#define CHARGING 1
-#define DISCHARGING 2
 //assign AIR to GPIO PIN
 
 void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
