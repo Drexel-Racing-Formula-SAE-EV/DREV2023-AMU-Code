@@ -33,6 +33,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 #include "LTC6813.h"
 #include "cmsis_os.h"
+#include "cli.h"
 //#include "help.h"
 /* USER CODE END Includes */
 
@@ -57,25 +58,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-void charging_mode();
-void discharge_mode();
-void print_conv_time(uint32_t conv_time);
-void check_error(int error);
-void print_cells(uint8_t datalog_en);
 void init_appdata(app_data *app_data_init);
-void print_rxcomm(void);
-void print_wrcomm(void);
-void test1(void);
-void spi_comm_test(void);
-void test4(void);
-void test5(void);
-void coll_cell_volt(void);
-void temp_calc(void);
-void volt_calc(void);
-void get_cell_data(void);
-static void cli_help(uint8_t nargs, char **args);
-static void rx_byte(char cRxByte);
-int cli_putc(const char str);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 /* USER CODE END EFP */
 

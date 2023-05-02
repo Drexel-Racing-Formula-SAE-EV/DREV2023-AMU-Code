@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-//#include "ltc6813.h"
+//#include "LTC681x.h"
 //#include "main.h" // need to move implicit declares in main.c/h to help.h!!
 
 //DEFINE GPIO's
@@ -84,6 +84,81 @@
 
 #define MSG_LEN 128
 
+#define TOTAL_IC 5
+
+/*! Cell Voltage data structure. */
+typedef struct
+{
+  uint16_t c_codes[18]; //!< Cell Voltage Codes
+  uint8_t pec_match[6]; //!< If a PEC error was detected during most recent read cmd
+} cv;
+
+/*! AUX Reg Voltage Data structure */
+typedef struct
+{
+  uint16_t a_codes[9]; //!< Aux Voltage Codes
+  uint8_t pec_match[4]; //!< If a PEC error was detected during most recent read cmd
+} ax;
+
+/*! Status Reg data structure. */
+typedef struct
+{
+  uint16_t stat_codes[4]; //!< Status codes.
+  uint8_t flags[3]; //!< Byte array that contains the uv/ov flag data
+  uint8_t mux_fail[1]; //!< Mux self test status flag
+  uint8_t thsd[1]; //!< Thermal shutdown status
+  uint8_t pec_match[2]; //!< If a PEC error was detected during most recent read cmd
+} st;
+
+/*! IC register structure. */
+typedef struct
+{
+  uint8_t tx_data[6];  //!< Stores data to be transmitted
+  uint8_t rx_data[8];  //!< Stores received data
+  uint8_t rx_pec_match; //!< If a PEC error was detected during most recent read cmd
+} ic_register;
+
+/*! PEC error counter structure. */
+typedef struct
+{
+  uint16_t pec_count; //!< Overall PEC error count
+  uint16_t cfgr_pec;  //!< Configuration register data PEC error count
+  uint16_t cell_pec[6]; //!< Cell voltage register data PEC error count
+  uint16_t aux_pec[4];  //!< Aux register data PEC error count
+  uint16_t stat_pec[2]; //!< Status register data PEC error count
+} pec_counter;
+
+/*! Register configuration structure */
+typedef struct
+{
+  uint8_t cell_channels; //!< Number of Cell channels
+  uint8_t stat_channels; //!< Number of Stat channels
+  uint8_t aux_channels;  //!< Number of Aux channels
+  uint8_t num_cv_reg;    //!< Number of Cell voltage register
+  uint8_t num_gpio_reg;  //!< Number of Aux register
+  uint8_t num_stat_reg;  //!< Number of  Status register
+} register_cfg;
+
+/*! Cell variable structure */
+typedef struct
+{
+  ic_register config;
+  ic_register configb;
+  cv  cells;
+  ax  aux;
+  st  stat;
+  ic_register com;
+  ic_register pwm;
+  ic_register pwmb;
+  ic_register sctrl;
+  ic_register sctrlb;
+  uint8_t sid[6];
+  uint8_t isospi_reverse;
+  pec_counter crc_count;
+  register_cfg ic_reg;
+  long system_open_wire;
+} cell_asic;
+
 typedef struct
 {
 	CAN_HandleTypeDef *hcan1;
@@ -97,6 +172,8 @@ typedef struct
 
 	DMA_HandleTypeDef *hdma_usart2_rx;
 
+	cell_asic *BMS_IC;
+
 	uint8_t debug;
 
 	uint16_t v_max;
@@ -104,7 +181,12 @@ typedef struct
 	uint16_t v_min;
 
 	uint16_t v_avg;
+
+	uint8_t stop_flag;
+
 } app_data;
+
+
 
 /// Serial command callback function definition
 typedef void (*sc_cmd_cb)(uint8_t nargs, char **args);
@@ -123,9 +205,5 @@ typedef struct APP_CMD {
 void u_sleep(uint32_t microseconds);
 
 void init_app_data_help(app_data *app_data_init);
-
-void spi_infinite_send(uint8_t *stop_flag);
-
-void spi_loopback(uint8_t *stop_flag);
 
 #endif /* INC_HELP_H_ */

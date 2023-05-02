@@ -45,6 +45,7 @@
 #include <stdint.h>
 #include "stm32F4xx_hal.h"
 #include "LTC681x.h"
+#include "help.h"
 //#include "bms_hardware.h"
 
 static app_data a_d;
@@ -55,9 +56,9 @@ void wakeup_idle(uint8_t total_ic) //Number of ICs in the system
 {
 	for (int i =0; i<total_ic; i++)
 	{
-	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);//change to defines in help.h - set to be interchangeable depending on spi bus
+	   LTC_6813_CS_RESET//change to defines in help.h - set to be interchangeable depending on spi bus
 	   spi_read_byte(0xFF);//Guarantees the isoSPI will be in ready mode
-	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	   LTC_6813_CS_SET
 	}
 }
 
@@ -67,10 +68,10 @@ void wakeup_sleep(uint8_t total_ic) //Number of ICs in the system
 	for (int i =0; i<total_ic; i++)
 	{
 	   //printf("made it in\r\n");
-	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	   LTC_6813_CS_RESET
 	   u_sleep(300); // Guarantees the LTC681x will be in standby
 	   //printf("stuck\r\n");
-	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	   LTC_6813_CS_SET
 	   u_sleep(10);
 	}
 }
@@ -88,9 +89,9 @@ void cmd_68(uint8_t tx_cmd[2]) //The command to be transmitted
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	spi_write_array(4,cmd);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 }
 
 /*
@@ -132,11 +133,11 @@ void write_68(uint8_t total_ic, //Number of ICs to be written to
 		cmd_index = cmd_index + 2;
 	}
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	//u_sleep(100);
 	spi_write_array(CMD_LEN, cmd);
 	//u_sleep(100);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 
 	free(cmd);
 }
@@ -161,11 +162,11 @@ int8_t read_68( uint8_t total_ic, // Number of ICs in the system
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	//u_sleep(100);
 	spi_write_read(cmd, 4, data, (BYTES_IN_REG*total_ic));         //Transmits the command and reads the configuration data of all ICs on the daisy chain into rx_data[] array
 	//u_sleep(100);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 
 	for (uint8_t current_ic = 0; current_ic < total_ic; current_ic++) //Executes for each LTC681x in the daisy chain and packs the data
 	{																//into the rx_data array as well as check the received data for any bit errors
@@ -768,9 +769,9 @@ void LTC681x_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
 		printf("%x\r\n",cmd[i]);
 	}*/
 	//printf("aaaaah\r\n");
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 }
 
 /*
@@ -817,9 +818,9 @@ void LTC681x_rdaux_reg(uint8_t reg, //Determines which GPIO voltage register is 
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 }
 
 /*
@@ -857,9 +858,9 @@ void LTC681x_rdstat_reg(uint8_t reg, //Determines which stat register is read ba
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 }
 
 /* Helper function that parses voltage measurement registers */
@@ -920,10 +921,10 @@ uint8_t LTC681x_pladc()
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	spi_write_array(4,cmd);
 	adc_state = spi_read_byte(0xFF);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 
 	return(adc_state);
 }
@@ -943,7 +944,7 @@ uint32_t LTC681x_pollAdc()
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	//while(1){
 	spi_write_array(4,cmd);
 	//}
@@ -961,7 +962,7 @@ uint32_t LTC681x_pollAdc()
 		}
 		//HAL_Delay(1000);
 	}
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 
 	return(counter);
 }
@@ -1930,9 +1931,9 @@ void LTC681x_stsctrl()
     cmd[2] = (uint8_t)(cmd_pec >> 8);
     cmd[3] = (uint8_t)(cmd_pec);
 
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+    LTC_6813_CS_RESET
     spi_write_array(4,cmd);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+    LTC_6813_CS_SET
 }
 
 /*
@@ -2029,7 +2030,7 @@ void LTC681x_stcomm(uint8_t len) //Length of data to be transmitted
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	LTC_6813_CS_RESET
 	spi_write_array(4,cmd);
 	for (int i = 0; i<len*3; i++)
 	{
@@ -2037,7 +2038,7 @@ void LTC681x_stcomm(uint8_t len) //Length of data to be transmitted
 	}
 	//printf("stcomm rx len: %d\r\n",len);
 	u_sleep(50);
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	LTC_6813_CS_SET
 }
 
 /* Helper function that increments PEC counters */
@@ -2316,10 +2317,10 @@ void init_app_data_681x(app_data *app_data_init)
 		sent[0]=0;
 		while (sent[0]<3){
 			sent[0] +=1;
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+			LTC_6813_CS_RESET
 			HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
 			printf("data sent %d :: data in init: %d \r\n",sent[0],data[0]);
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+			LTC_6813_CS_SET
 			HAL_Delay(1000);
 		}
 	}
