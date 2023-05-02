@@ -62,10 +62,16 @@ ADC_HandleTypeDef hadc1;
 
 CAN_HandleTypeDef hcan1;
 
-SPI_HandleTypeDef hspi1;
+DAC_HandleTypeDef hdac;
+
 SPI_HandleTypeDef hspi2;
+SPI_HandleTypeDef hspi3;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim8;
+TIM_HandleTypeDef htim9;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -204,12 +210,17 @@ static app_data a_dd;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_SPI1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_TIM3_Init(void);
+static void MX_SPI3_Init(void);
+static void MX_DAC_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_TIM8_Init(void);
+static void MX_TIM9_Init(void);
 void Start_Temp_Mon(void *argument);
 void Start_V_Mon(void *argument);
 void CLI_START(void *argument);
@@ -267,19 +278,24 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_SPI1_Init();
   MX_ADC1_Init();
   MX_CAN1_Init();
   MX_SPI2_Init();
   MX_TIM1_Init();
   MX_USART2_UART_Init();
+  MX_TIM3_Init();
+  MX_SPI3_Init();
+  MX_DAC_Init();
+  MX_TIM4_Init();
+  MX_TIM8_Init();
+  MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
   a_d.hcan1 = &hcan1;
   a_d.hspi1 = &hspi2;//flip back
   a_d.hspi2 = &hspi2;//flip bakc
   a_d.huart2 = &huart2;
   a_d.hdma_usart2_rx = &hdma_usart2_rx;
-  a_d.htim1 = &htim1;
+  a_d.htim1 = &htim8;
   a_d.debug = DEBUGG;
   a_d.v_max = 0;
   a_d.v_min = 0;
@@ -289,9 +305,9 @@ int main(void)
 
   printf("LETSS GOOOOOOO\r\n");
 
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+  //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 
-  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_Base_Start(&htim8);
   //HAL_UART_Receive_IT (&huart2, UART2_rxBuffer, 1);
   __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
   HAL_UART_Receive_DMA(&huart2, rx_buf, RXBUF_SIZE);
@@ -486,40 +502,49 @@ static void MX_CAN1_Init(void)
 }
 
 /**
-  * @brief SPI1 Initialization Function
+  * @brief DAC Initialization Function
   * @param None
   * @retval None
   */
-static void MX_SPI1_Init(void)
+static void MX_DAC_Init(void)
 {
 
-  /* USER CODE BEGIN SPI1_Init 0 */
+  /* USER CODE BEGIN DAC_Init 0 */
 
-  /* USER CODE END SPI1_Init 0 */
+  /* USER CODE END DAC_Init 0 */
 
-  /* USER CODE BEGIN SPI1_Init 1 */
+  DAC_ChannelConfTypeDef sConfig = {0};
 
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  /* USER CODE BEGIN DAC_Init 1 */
+
+  /* USER CODE END DAC_Init 1 */
+
+  /** DAC Initialization
+  */
+  hdac.Instance = DAC;
+  if (HAL_DAC_Init(&hdac) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN SPI1_Init 2 */
 
-  /* USER CODE END SPI1_Init 2 */
+  /** DAC channel OUT1 config
+  */
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** DAC channel OUT2 config
+  */
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DAC_Init 2 */
+
+  /* USER CODE END DAC_Init 2 */
 
 }
 
@@ -546,7 +571,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -558,6 +583,44 @@ static void MX_SPI2_Init(void)
   /* USER CODE BEGIN SPI2_Init 2 */
 
   /* USER CODE END SPI2_Init 2 */
+
+}
+
+/**
+  * @brief SPI3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI3_Init(void)
+{
+
+  /* USER CODE BEGIN SPI3_Init 0 */
+
+  /* USER CODE END SPI3_Init 0 */
+
+  /* USER CODE BEGIN SPI3_Init 1 */
+
+  /* USER CODE END SPI3_Init 1 */
+  /* SPI3 parameter configuration*/
+  hspi3.Instance = SPI3;
+  hspi3.Init.Mode = SPI_MODE_MASTER;
+  hspi3.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi3.Init.NSS = SPI_NSS_SOFT;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi3.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI3_Init 2 */
+
+  /* USER CODE END SPI3_Init 2 */
 
 }
 
@@ -575,6 +638,8 @@ static void MX_TIM1_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
 
   /* USER CODE BEGIN TIM1_Init 1 */
 
@@ -595,15 +660,309 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
+  if (HAL_TIM_PWM_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
+  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
+  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
+  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
+  if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 65535;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
+
+}
+
+/**
+  * @brief TIM8 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM8_Init(void)
+{
+
+  /* USER CODE BEGIN TIM8_Init 0 */
+
+  /* USER CODE END TIM8_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM8_Init 1 */
+
+  /* USER CODE END TIM8_Init 1 */
+  htim8.Instance = TIM8;
+  htim8.Init.Prescaler = 167;
+  htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim8.Init.Period = 65535;
+  htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim8.Init.RepetitionCounter = 0;
+  htim8.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim8, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim8, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM8_Init 2 */
+
+  /* USER CODE END TIM8_Init 2 */
+
+}
+
+/**
+  * @brief TIM9 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM9_Init(void)
+{
+
+  /* USER CODE BEGIN TIM9_Init 0 */
+
+  /* USER CODE END TIM9_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+  TIM_IC_InitTypeDef sConfigIC = {0};
+
+  /* USER CODE BEGIN TIM9_Init 1 */
+
+  /* USER CODE END TIM9_Init 1 */
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 0;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 65535;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_IC_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
+  sSlaveConfig.InputTrigger = TIM_TS_TI1FP1;
+  sSlaveConfig.TriggerPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sSlaveConfig.TriggerPrescaler = TIM_ICPSC_DIV1;
+  sSlaveConfig.TriggerFilter = 0;
+  if (HAL_TIM_SlaveConfigSynchro(&htim9, &sSlaveConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
+  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
+  sConfigIC.ICFilter = 0;
+  if (HAL_TIM_IC_ConfigChannel(&htim9, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
+  sConfigIC.ICSelection = TIM_ICSELECTION_INDIRECTTI;
+  if (HAL_TIM_IC_ConfigChannel(&htim9, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM9_Init 2 */
+
+  /* USER CODE END TIM9_Init 2 */
 
 }
 
@@ -682,14 +1041,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, SPI2CS1_Pin|SPI2CS2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
                           |Audio_RST_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : CS_I2C_SPI_Pin */
   GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
@@ -719,26 +1075,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pin : BOOT1_Pin */
   GPIO_InitStruct.Pin = BOOT1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BOOT1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : CLK_IN_Pin */
-  GPIO_InitStruct.Pin = CLK_IN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  /*Configure GPIO pins : SPI2CS1_Pin SPI2CS2_Pin */
+  GPIO_InitStruct.Pin = SPI2CS1_Pin|SPI2CS2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
-  HAL_GPIO_Init(CLK_IN_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD4_Pin LD3_Pin LD5_Pin LD6_Pin
                            Audio_RST_Pin */
@@ -749,48 +1097,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : I2S3_MCK_Pin I2S3_SCK_Pin I2S3_SD_Pin */
-  GPIO_InitStruct.Pin = I2S3_MCK_Pin|I2S3_SCK_Pin|I2S3_SD_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : VBUS_FS_Pin */
-  GPIO_InitStruct.Pin = VBUS_FS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(VBUS_FS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : OTG_FS_ID_Pin OTG_FS_DM_Pin OTG_FS_DP_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_ID_Pin|OTG_FS_DM_Pin|OTG_FS_DP_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pin : OTG_FS_OverCurrent_Pin */
   GPIO_InitStruct.Pin = OTG_FS_OverCurrent_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(OTG_FS_OverCurrent_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : Audio_SCL_Pin Audio_SDA_Pin */
-  GPIO_InitStruct.Pin = Audio_SCL_Pin|Audio_SDA_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : MEMS_INT2_Pin */
   GPIO_InitStruct.Pin = MEMS_INT2_Pin;
@@ -803,6 +1114,341 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
+const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
+const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
+const int current_max = 2;//max current allowed for charging system
+int CCL = 2; // current charge limit - initially the max current a cell can handle
+int DCL = 2; // discharge current limit - initially the max current a cell can handle
+int hall_current = 0;
+#define CHARGING 1
+#define DISCHARGING 2
+//assign AIR to GPIO PIN
+
+void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
+	while(mode_flag==CHARGING){
+		//check if charge current limit >0
+		if(CCL>0){
+			//ADC of hall effect-at pin PC1
+			if(hall_current>=CCL+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
+
+			}
+			else{
+				//allow charging to continue - repeats the loop
+			}
+		}
+		else{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
+		}
+	}
+}
+
+void discharge_mode(){//default mode ~when GPIO Signal is low
+	while(mode_flag==DISCHARGING){
+		//check if discharge current limit >0
+		if(DCL>0){
+			if(hall_current < DCL+2){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+			}
+			else{
+
+			}
+		}
+		else{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+		}
+	}
+}
+
+void print_conv_time(uint32_t conv_time)
+{
+  uint16_t m_factor=1000;  // to print in ms
+
+  //Serial.print(F("Conversion completed in:"));
+  //Serial.print(((float)conv_time/m_factor), 1);
+  //Serial.println(F("ms \n"));
+  printf("Conversion completed in %f ms\r\n",(float)conv_time/m_factor);
+}
+
+void check_error(int error)
+{
+  if (error == -1)
+  {
+    printf("A PEC error was detected in the received data\r\n");
+  }
+}
+
+void print_cells(uint8_t datalog_en)
+{
+  for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    if (datalog_en == 0)
+    {
+      //Serial.print(" IC ");
+      //Serial.print(current_ic+1,DEC);
+      //Serial.print(", ");
+      printf(" IC %d,",current_ic+1);
+      for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++)
+      {
+        //Serial.print(" C");
+        //Serial.print(i+1,DEC);
+        //Serial.print(":");
+        //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
+        //Serial.print(",");
+        printf(" C%d:%.4f,",i+1,BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+      }
+      //Serial.println();
+      printf("\r\n");
+    }
+    else
+    {
+      //Serial.print(" Cells, ");
+      printf(" Cells, ");
+      for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++)
+      {
+        //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
+        //Serial.print(",");
+        printf("%f,",BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+      }
+    }
+  }
+  //Serial.println("\n");
+  printf("\r\n");
+}
+
+/*!****************************************************************************
+  \brief prints data which is written on COMM register onto the serial port
+  @return void
+ *****************************************************************************/
+void print_wrcomm(void)
+{
+ int comm_pec;
+
+  //Serial.println(F("Written Data in COMM Register: "));
+  printf("Written Data in COMM Register: \r\n");
+  for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC- "));
+    //Serial.print(current_ic+1,DEC);
+    printf(" IC- %d",current_ic+1);
+
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].com.tx_data[i]);
+      printf(", %x",BMS_IC[current_ic].com.tx_data[i]);
+    }
+    //Serial.print(F(", Calculated PEC: 0x"));
+    printf(", Calculated PEC: ");
+    comm_pec = pec15_calc(6,&BMS_IC[current_ic].com.tx_data[0]);
+    //serial_print_hex((uint8_t)(comm_pec>>8));
+    printf("%x",comm_pec>>8);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex((uint8_t)(comm_pec));
+    printf(", %x\r\n",comm_pec);
+    //Serial.println("\n");
+  }
+}
+
+/*!****************************************************************************
+  \brief Prints received data from COMM register onto the serial port
+  @return void
+ *****************************************************************************/
+void print_rxcomm(void)
+{
+   printf("Received Data in COMM register: \r\n");
+  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC- "));
+    //Serial.print(current_ic+1,DEC);
+    printf(" IC- %d",current_ic+1);
+
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].com.rx_data[i]);
+      printf(", %x",BMS_IC[current_ic].com.rx_data[i]);
+    }
+    //Serial.print(F(", Received PEC: 0x"));
+    //serial_print_hex(BMS_IC[current_ic].com.rx_data[6]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].com.rx_data[7]);
+    //Serial.println("\n");
+    printf(", Received PEC: %x, %x\r\n",BMS_IC[current_ic].com.rx_data[6],BMS_IC[current_ic].com.rx_data[7]);
+  }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    HAL_UART_Transmit(&huart2, UART2_rxBuffer, 1, 100);
+    HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, 1);
+	 if(stop_flag==1){
+		stop_flag=0;
+	 }
+	 else{
+		stop_flag=1;
+	 }
+}
+
+void test1(void){
+	printf("\r\n entering test1\r\n;");
+	  char spi_tx_buffer[200];
+	  char spi_rx_buffer[200];
+	  uint16_t spi_transfer_size = 200;
+	  while (stop_flag)//stop_flag)
+	  {
+		  for(int i = 0; i<200; i++){
+			  spi_tx_buffer[i] = i;
+		  }
+	         //printf("Hello World\n\r");//wont see until uart to usb recieved
+	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	   	  HAL_SPI_TransmitReceive(&hspi2, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+	   	//spi_write_read(spi_tx_buffer,200,spi_rx_buffer,200);
+	   	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+	   	  for(int i = 0; i<200; i++){
+	   		  printf("%d ",spi_rx_buffer[i]);
+	   	  }
+	         //turn off rgb leds
+	         //HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
+
+	         HAL_Delay(1000);
+		}
+	  printf("\r\n exiting test1\r\n;");
+}
+
+void spi_comm_test(void){
+	printf("\r\n entering test3\r\n;");
+	  //while(stop_flag){
+		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
+	      for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
+	      {
+	        //Communication control bits and communication data bytes. Refer to the data sheet.
+	        BMS_IC[current_ic].com.tx_data[0]= 0x81; // Icom CSBM Low(8) + data D0 (0x11)
+	        BMS_IC[current_ic].com.tx_data[1]= 0x10; // Fcom CSBM Low(0)
+	        BMS_IC[current_ic].com.tx_data[2]= 0xA2; // Icom CSBM Falling Edge (A) + data D1 (0x25)
+	        BMS_IC[current_ic].com.tx_data[3]= 0x50; // Fcom CSBM Low(0)
+	        BMS_IC[current_ic].com.tx_data[4]= 0xA1; // Icom CSBM Falling Edge (A) + data D2 (0x17)
+	        BMS_IC[current_ic].com.tx_data[5]= 0x79; // Fcom CSBM High(9)
+	      }
+	      wakeup_sleep(TOTAL_IC);
+	      LTC6813_wrcomm(TOTAL_IC,BMS_IC);
+	      //print_wrcomm();
+
+	      wakeup_idle(TOTAL_IC);
+	      LTC6813_stcomm(3);
+
+	      wakeup_idle(TOTAL_IC);
+	      error = LTC6813_rdcomm(TOTAL_IC,BMS_IC);
+	      check_error(error);
+	      print_wrcomm();
+	      print_rxcomm();
+	      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
+	      //HAL_Delay(1000);
+	  //}
+	  printf("\r\n exiting test3\r\n;");
+}
+
+void test4(void){
+	printf("\r\n entering test4\r\n;");
+	  //while (stop_flag)
+	  //{
+		  printf("starting cell voltage reading loop\r\n");
+		  printf("recording wakeup sleep\r\n");
+		  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
+		  wakeup_sleep(TOTAL_IC);
+		  //printf("pass1\r\n");
+		  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+		  //printf("pass2\r\n");
+		  conv_time = LTC6813_pollAdc();
+		  //printf("start ADC waiting 1 seconds\r\n");
+		  //HAL_Delay(1000);
+
+		  //printf("pass3\r\n");
+		  print_conv_time(conv_time);
+		  //printf("Cell Voltages:\r\n");
+
+	      wakeup_sleep(TOTAL_IC);
+	      error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
+	      check_error(error);
+	      print_cells(DATALOG_DISABLED);
+	      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
+	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_SET);
+	      HAL_Delay(1000);
+	      //turn off rgb leds
+	      HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15, GPIO_PIN_RESET);
+	      //HAL_Delay(1000);
+	  //}
+	  printf("\r\n exiting test4\r\n;");
+}
+
+void test5(void){
+	printf("starting sleep\r\n");
+	for(int i=0;i<10;i++){
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+		u_sleep(300);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+		u_sleep(300);
+	}
+
+	printf("ending sleep\r\n");
+}
+
+void volt_calc(void){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
+	uint16_t volt_min=65535,volt_max=0,volt_avg=0,total_cells=0;
+	uint32_t volt_total=0;
+	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
+	  {
+	    for (int i=0; i<BMS_IC[0].ic_reg.cell_channels; i++){
+	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+	    	if(BMS_IC[current_ic].cells.c_codes[i]==65535||BMS_IC[current_ic].cells.c_codes[i]==0);
+	    	else if(volt_min>BMS_IC[current_ic].cells.c_codes[i]){
+	    		volt_min = BMS_IC[current_ic].cells.c_codes[i];
+	    	}
+	    	if(BMS_IC[current_ic].cells.c_codes[i]==65535||BMS_IC[current_ic].cells.c_codes[i]==0);
+	    	else if(volt_max<BMS_IC[current_ic].cells.c_codes[i]){
+	    		volt_max=BMS_IC[current_ic].cells.c_codes[i];
+	    	}
+	    	if(BMS_IC[current_ic].cells.c_codes[i]!=65535&&BMS_IC[current_ic].cells.c_codes[i]!=0){
+				volt_total += BMS_IC[current_ic].cells.c_codes[i];
+				total_cells++;
+	    	}
+	    }
+	  }
+    //printf("total cells: %d\r\n",total_cells);
+    volt_avg = volt_total/total_cells;
+    //printf("volt total %d, volt_avg %d\r\n",volt_total,volt_avg);
+    //printf("vmax: %d, vmin %d, vavg, %d\r\n",volt_max,volt_min,volt_avg);
+    a_dd.v_max = volt_max;
+    a_dd.v_min = volt_min;
+    a_dd.v_avg = volt_avg;
+}
+
+void coll_cell_volt(void){
+	  wakeup_sleep(TOTAL_IC);
+	  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+	  conv_time = LTC6813_pollAdc();
+	  print_conv_time(conv_time);  //gotta fix this whole part
+
+    wakeup_sleep(TOTAL_IC);
+    error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,BMS_IC); // Set to read back all cell voltage registers
+    check_error(error);
+    print_cells(DATALOG_DISABLED);
+}
+
+void temp_calc(void){
+
+}
+
+void get_cell_data(void){
+	printf("\r\nTotal Cells: %d\
+			\r\nTotal IC:    %d\
+			\r\nVolt Min:    %.04f\
+			\r\nVolt Max:    %.04f\
+			\r\nVolt Avg:    %.04f\r\n",a_dd.v_min*.0001,a_dd.v_max*.0001,a_dd.v_avg*.0001);
+}
+
 void init_appdata(app_data *app_data_init)
 {
 	a_dd = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files

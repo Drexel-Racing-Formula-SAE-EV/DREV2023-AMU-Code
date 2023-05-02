@@ -55,7 +55,7 @@ void wakeup_idle(uint8_t total_ic) //Number of ICs in the system
 {
 	for (int i =0; i<total_ic; i++)
 	{
-	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);//change to defines in help.h - set to be interchangeable depending on spi bus
 	   spi_read_byte(0xFF);//Guarantees the isoSPI will be in ready mode
 	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
 	}
