@@ -244,7 +244,12 @@ int main(void)
   a_d.hspi2 = &hspi2;//flip bakc
   a_d.huart2 = &huart2;
   a_d.hdma_usart2_rx = &hdma_usart2_rx;
-  a_d.htim1 = &htim8;
+  a_d.htim1 = &htim1;
+  a_d.htim3 = &htim3;
+  a_d.htim4 = &htim4;
+  a_d.htim8 = &htim8;
+  a_d.htim9 = &htim9;
+  a_d.hdac = &hdac;
   a_d.debug = DEBUGG;
   a_d.v_max = 0;
   a_d.v_min = 0;
@@ -257,8 +262,31 @@ int main(void)
   printf("LETSS GOOOOOOO\r\n");
 
   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
+  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_Base_Start(&htim3);
+  HAL_TIM_Base_Start(&htim4);
   HAL_TIM_Base_Start(&htim8);
+  HAL_TIM_Base_Start(&htim9);
+
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
+
+  HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+  HAL_DAC_Start(&hdac, DAC_CHANNEL_2);
+
+  HAL_TIM_IC_Start_IT(&htim9, TIM_CHANNEL_1); // Primary channel - rising edge
+  HAL_TIM_IC_Start(&htim9, TIM_CHANNEL_2);    // Secondary channel - falling edge
+
   //HAL_UART_Receive_IT (&huart2, UART2_rxBuffer, 1);
   __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
   HAL_UART_Receive_DMA(&huart2, rx_buf, RXBUF_SIZE);
@@ -1066,6 +1094,25 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 //assign AIR to GPIO PIN
+
+uint32_t ICValue = 0;
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // If the interrupt is triggered by channel 1
+	{
+		// Read the IC value
+		ICValue = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
+
+		if (ICValue != 0)
+		{
+			printf("calculating 1 duty\r\n");
+			// calculate the Duty Cycle
+			a_d.Duty = (HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2) *100)/ICValue;
+
+			a_d.Freq = 90000000/ICValue;
+		}
+	}
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {

@@ -33,6 +33,12 @@ void get_cell_data(void);
 
 void can_test(void);
 
+void pwm_out_test(void);
+
+void pwm_in_test(void);
+
+void dac_test(void);
+
 void charging_mode();
 
 void discharge_mode();

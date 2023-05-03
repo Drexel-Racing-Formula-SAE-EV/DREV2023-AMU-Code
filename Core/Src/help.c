@@ -11,8 +11,8 @@ app_data a_d;
 
 
 void u_sleep(uint32_t microseconds){
-	__HAL_TIM_SET_COUNTER(a_d.htim1,0);  // set the counter value a 0
-	while (__HAL_TIM_GET_COUNTER(a_d.htim1) < microseconds);  // wait for the counter to reach the us input in the parameter
+	__HAL_TIM_SET_COUNTER(a_d.htim8,0);  // set the counter value a 0
+	while (__HAL_TIM_GET_COUNTER(a_d.htim8) < microseconds);  // wait for the counter to reach the us input in the parameter
 }
 void init_app_data_help(app_data *app_data_init)
 {

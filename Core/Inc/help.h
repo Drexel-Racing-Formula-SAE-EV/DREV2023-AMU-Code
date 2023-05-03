@@ -169,8 +169,14 @@ typedef struct
 	UART_HandleTypeDef *huart2;
 
 	TIM_HandleTypeDef *htim1;
+	TIM_HandleTypeDef *htim3;
+	TIM_HandleTypeDef *htim4;
+	TIM_HandleTypeDef *htim8;
+	TIM_HandleTypeDef *htim9;
 
 	DMA_HandleTypeDef *hdma_usart2_rx;
+
+	DAC_HandleTypeDef *hdac;
 
 	cell_asic *BMS_IC;
 
@@ -181,6 +187,10 @@ typedef struct
 	uint16_t v_min;
 
 	uint16_t v_avg;
+
+	uint32_t Freq;
+
+	float Duty;
 
 	uint8_t stop_flag;
 

@@ -254,6 +254,65 @@ void can_test(void){
     }
 }
 
+void pwm_out_test(void){
+	  int32_t dutyCycle = 0;
+	  while (1)
+	  {
+		   while(dutyCycle < 65535)
+		        {
+		            TIM1->CCR1 = dutyCycle;
+		            TIM1->CCR2 = dutyCycle;
+		            TIM1->CCR3 = dutyCycle;
+		            TIM1->CCR4 = dutyCycle;
+		            TIM3->CCR1 = dutyCycle;
+					TIM3->CCR2 = dutyCycle;
+					TIM3->CCR3 = dutyCycle;
+					TIM3->CCR4 = dutyCycle;
+					TIM4->CCR1 = dutyCycle;
+					TIM4->CCR2 = dutyCycle;
+					TIM4->CCR3 = dutyCycle;
+					TIM4->CCR4 = dutyCycle;
+		            dutyCycle += 100;
+		            HAL_Delay(10);
+		        }
+		        while(dutyCycle > 0)
+		        {
+		            TIM1->CCR1 = dutyCycle;
+		            TIM1->CCR2 = dutyCycle;
+		            TIM1->CCR3 = dutyCycle;
+		            TIM1->CCR4 = dutyCycle;
+		            TIM3->CCR1 = dutyCycle;
+					TIM3->CCR2 = dutyCycle;
+					TIM3->CCR3 = dutyCycle;
+					TIM3->CCR4 = dutyCycle;
+					TIM4->CCR1 = dutyCycle;
+					TIM4->CCR2 = dutyCycle;
+					TIM4->CCR3 = dutyCycle;
+					TIM4->CCR4 = dutyCycle;
+		            dutyCycle -= 100;
+		            HAL_Delay(10);
+		        }
+	  }
+}
+
+void pwm_in_test(void){
+	printf("Duty %ul Freq %ul\r\n",a_d.Duty,a_d.Freq);
+}
+
+void dac_test(void){
+	uint32_t DAC_OUT[4] = {0, 1241, 2482, 3723};
+	uint8_t i = 0;
+	while(1){
+        HAL_DAC_SetValue(a_d.hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_OUT[i++]);
+        HAL_DAC_SetValue(a_d.hdac, DAC_CHANNEL_2, DAC_ALIGN_12B_R, DAC_OUT[i++]);
+        if(i == 4)
+        {
+            i = 0;
+        }
+        HAL_Delay(50);
+	}
+}
+
 void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
 	while(mode_flag==CHARGING){
 		//check if charge current limit >0
