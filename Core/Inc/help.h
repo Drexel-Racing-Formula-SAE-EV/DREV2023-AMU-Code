@@ -180,19 +180,19 @@ typedef struct
 
 	cell_asic *BMS_IC;
 
-	uint8_t debug;
+	uint8_t *debug;
 
-	uint16_t v_max;
+	uint16_t *v_max;
 
-	uint16_t v_min;
+	uint16_t *v_min;
 
-	uint16_t v_avg;
+	uint16_t *v_avg;
 
-	uint32_t Freq;
+	uint32_t *Freq;
 
-	float Duty;
+	float *Duty;
 
-	uint8_t stop_flag;
+	uint8_t *stop_flag;
 
 } app_data;
 

@@ -7,7 +7,7 @@
 
 #include "help.h"
 
-app_data a_d;
+static app_data a_d;
 
 
 void u_sleep(uint32_t microseconds){

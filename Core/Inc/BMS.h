@@ -53,4 +53,6 @@ void print_rxcomm(void);
 
 void print_wrcomm(void);
 
+void init_app_data_bms(app_data *app_data_init);
+
 #endif /* INC_BMS_H_ */

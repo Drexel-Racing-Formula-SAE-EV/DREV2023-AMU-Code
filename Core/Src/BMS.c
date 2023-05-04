@@ -13,7 +13,7 @@
 #define CHARGING 1
 #define DISCHARGING 2
 
-extern app_data a_d;
+static app_data a_d;
 
 /********************************************************************
  ADC Command Configurations. See LTC681x.h for options(Reference Linduino LTC6813)
@@ -238,7 +238,7 @@ void get_cell_data(void){
 			\r\nTotal IC:    %d\
 			\r\nVolt Min:    %.04f\
 			\r\nVolt Max:    %.04f\
-			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,a_d.v_min*.0001,a_d.v_max*.0001,a_d.v_avg*.0001);
+			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,*a_d.v_min*.0001,*a_d.v_max*.0001,*a_d.v_avg*.0001);
 }
 
 void can_test(void){
@@ -296,7 +296,7 @@ void pwm_out_test(void){
 }
 
 void pwm_in_test(void){
-	printf("Duty %ul Freq %ul\r\n",a_d.Duty,a_d.Freq);
+	printf("Duty %f Freq %ul\r\n",*a_d.Duty,*a_d.Freq);
 }
 
 void dac_test(void){
@@ -466,3 +466,9 @@ void print_rxcomm(void)
     printf(", Received PEC: %x, %x\r\n",a_d.BMS_IC[current_ic].com.rx_data[6],a_d.BMS_IC[current_ic].com.rx_data[7]);
   }
 }
+
+void init_app_data_bms(app_data *app_data_init)
+{
+	a_d = *app_data_init;
+}
+

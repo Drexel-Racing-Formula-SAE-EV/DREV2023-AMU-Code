@@ -149,6 +149,15 @@ uint8_t rx_buf[RXBUF_SIZE];
 uint8_t tx_buf[TXBUF_SIZE];
 uint8_t command_buf[RXBUF_SIZE];
 uint8_t cli_msg_pending;
+
+uint8_t debugg = DEBUGG;
+uint16_t v_max = 0;
+uint16_t v_min = 0;
+uint16_t v_avg = 0;
+uint32_t Freq = 0;
+float Duty = 0;
+uint8_t stop_flag = 0;
+
 DATALOG_DISABLED;
 //declare app_data
 static app_data a_d;
@@ -250,11 +259,13 @@ int main(void)
   a_d.htim8 = &htim8;
   a_d.htim9 = &htim9;
   a_d.hdac = &hdac;
-  a_d.debug = DEBUGG;
-  a_d.v_max = 0;
-  a_d.v_min = 0;
-  a_d.v_avg = 0;
-  a_d.stop_flag = 0;
+  a_d.debug = &debugg;
+  a_d.v_max = &v_max;
+  a_d.v_min = &v_min;
+  a_d.v_avg = &v_avg;
+  a_d.Freq = &Freq;
+  a_d.Duty = &Duty;
+  a_d.stop_flag = &stop_flag;
   a_d.BMS_IC = &BMS_IC;
 
   init_appdata(&a_d);
@@ -1096,20 +1107,21 @@ static void MX_GPIO_Init(void)
 //assign AIR to GPIO PIN
 
 uint32_t ICValue = 0;
-
+int i = 0;
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // If the interrupt is triggered by channel 1
 	{
 		// Read the IC value
 		ICValue = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);
-
 		if (ICValue != 0)
 		{
-			printf("calculating 1 duty\r\n");
 			// calculate the Duty Cycle
-			a_d.Duty = (HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2) *100)/ICValue;
+			*a_d.Duty = (HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2) *100)/ICValue;//add 1 to duty cycle for some reason! but its accurate
 
-			a_d.Freq = 90000000/ICValue;
+			*a_d.Freq = 168000000/ICValue;
+			/*if(i<5){
+				printf("Duty:%f Freq:%ul\r\n",*a_d.Duty,*a_d.Freq);i++;
+			}*/
 		}
 	}
 }
@@ -1147,6 +1159,7 @@ void init_appdata(app_data *app_data_init)
 	}
 	init_app_data_6813(&a_d);
 	init_app_data_help(&a_d);
+	init_app_data_bms(&a_d);
 }
 /* USER CODE END 4 */
 
