@@ -8,6 +8,7 @@
 #ifndef INC_CLI_H_
 #define INC_CLI_H_
 
+#include <string.h>
 #include "stm32f4xx_hal.h"
 #include "cmsis_os.h"
 #include "help.h"

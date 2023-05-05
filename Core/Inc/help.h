@@ -84,7 +84,7 @@
 
 #define MSG_LEN 128
 
-#define TOTAL_IC 5
+#define TOTAL_IC 1//should be 5
 
 /*! Cell Voltage data structure. */
 typedef struct

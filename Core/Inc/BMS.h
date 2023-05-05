@@ -9,39 +9,44 @@
 #define INC_BMS_H_
 
 #include "LTC681x.h"
+#include "LTC6813.h"
 #include "help.h"
 
-void spi_infinite_send(uint8_t *stop_flag);
+void spi_infinite_send(uint8_t nargs, char **args);
 
-void spi_loopback(uint8_t *stop_flag);
+void spi_loopback(uint8_t nargs, char **args);
 
-void test1(void);
+void test1(uint8_t nargs, char **args);
 
-void spi_comm_test(void);
+void spi_comm_test(uint8_t nargs, char **args);
 
-void test4(void);
+void test4(uint8_t nargs, char **args);
 
-void test5(void);
+void test5(uint8_t nargs, char **args);
 
-void coll_cell_volt(void);
+void coll_cell_volt(uint8_t nargs, char **args);
 
-void temp_calc(void);
+void temp_calc(uint8_t nargs, char **args);
 
-void volt_calc(void);
+void volt_calc(uint8_t nargs, char **args);
 
-void get_cell_data(void);
+void cb_test(uint8_t nargs, char **args);
 
-void can_test(void);
+void stop_balance(uint8_t nargs, char **args);
 
-void pwm_out_test(void);
+void get_cell_data(uint8_t nargs, char **args);
 
-void pwm_in_test(void);
+void can_test(uint8_t nargs, char **args);
 
-void dac_test(void);
+void pwm_out_test(uint8_t nargs, char **args);
 
-void charging_mode();
+void pwm_in_test(uint8_t nargs, char **args);
 
-void discharge_mode();
+void dac_test(uint8_t nargs, char **args);
+
+void charging_mode(uint8_t nargs, char **args);
+
+void discharge_mode(uint8_t nargs, char **args);
 
 void print_conv_time(uint32_t conv_time);
 

@@ -37,15 +37,17 @@ static const sc_command console_commands[] = {
 	{"5", "Runs Test 5",test5 },
 	{"charge", "Turns On Charging Mode",charging_mode },
 	{"discharge", "Turns of Discharge Mode",discharge_mode },
-	{"spi_infinite_send", "Infinite SPI",spi_infinite_send },
-	{"spi_loopback", "Spi Loopback", spi_loopback},
-	{"display_cell_data", "Displays Cell Data", get_cell_data},
-	{"coll_cell_volt", "Collects Cell Voltage", coll_cell_volt},
-	{"volt_calc", "Calculates Voltage", volt_calc},
-	{"can_test", "Can Test", can_test},
-	{"pwmo_test", "PWM out Test WARNING INFINITE", pwm_out_test},
-	{"pwmin_test", "PWM in Test WARNING INFINITE", pwm_in_test},
-	{"dac_test", "DAC TEST WARNING INFINITE", dac_test}
+	{"sis", "Infinite SPI",spi_infinite_send },
+	{"spil", "Spi Loopback", spi_loopback},
+	{"dcd", "Displays Cell Data", get_cell_data},
+	{"ccv", "Collects Cell Voltage", coll_cell_volt},
+	{"vc", "Calculates Voltage", volt_calc},
+	{"cant", "Can Test", can_test},
+	{"pwmot", "PWM out Test WARNING INFINITE", pwm_out_test},
+	{"pwmint", "PWM in Test WARNING INFINITE", pwm_in_test},
+	{"dact", "DAC TEST WARNING INFINITE", dac_test},
+	{"cbt", "Cell Balancing Test", cb_test},
+	{"sb", "Stops All Cell Balancing", stop_balance}
 };
 
 uint8_t m2mOn = 0;

@@ -43,7 +43,7 @@ int DCL = 2; // discharge current limit - initially the max current a cell can h
 int hall_current = 0;
 
 
-void spi_loopback(uint8_t *stop_flag){
+void spi_loopback(uint8_t nargs, char **args){
 	printf("\r\n spi loopback\r\n;");
 	char spi_tx_buffer[200]={0};
 	char spi_rx_buffer[200]={0};
@@ -51,7 +51,7 @@ void spi_loopback(uint8_t *stop_flag){
 	for(int i = 0; i<200; i++){
 	  spi_tx_buffer[i] = i;
 	}
-	while(*stop_flag){
+	while(*a_d.stop_flag){
 	   	  LTC_6813_CS_RESET
 	   	  HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
 	   	  LTC_6813_CS_SET
@@ -69,11 +69,11 @@ void spi_loopback(uint8_t *stop_flag){
 
 }
 
-void spi_infinite_send(uint8_t *stop_flag){
+void spi_infinite_send(uint8_t nargs, char **args){
 	printf("\r\n entering test2\r\n;");
 	  LTC_6813_CS_RESET
 	  uint8_t blah[1] = {0x02};
-	  while(*stop_flag){
+	  while(*a_d.stop_flag){
 			HAL_SPI_Transmit(a_d.hspi1, blah,1,100);
 			//for(uint8_t i = 0; i<tx_len+rx_len; i++){
 			  //	printf("%x\r\n",rx_data[i]);
@@ -86,7 +86,7 @@ void spi_infinite_send(uint8_t *stop_flag){
 
 }
 
-void test1(void){
+void test1(uint8_t nargs, char **args){
 	printf("\r\n entering test1\r\n;");
 	  char spi_tx_buffer[200];
 	  char spi_rx_buffer[200];
@@ -112,7 +112,7 @@ void test1(void){
 	  printf("\r\n exiting test1\r\n;");
 }
 
-void spi_comm_test(void){
+void spi_comm_test(uint8_t nargs, char **args){
 	printf("\r\n entering test3\r\n;");
 	  //while(stop_flag){
 	      for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
@@ -142,7 +142,7 @@ void spi_comm_test(void){
 	  printf("\r\n exiting test3\r\n;");
 }
 
-void test4(void){
+void test4(uint8_t nargs, char **args){
 	printf("\r\n entering test4\r\n;");
 	  //while (stop_flag)
 	  //{
@@ -175,7 +175,7 @@ void test4(void){
 	  printf("\r\n exiting test4\r\n;");
 }
 
-void test5(void){
+void test5(uint8_t nargs, char **args){
 	printf("starting sleep\r\n");
 	for(int i=0;i<10;i++){
 		LTC_6813_CS_RESET
@@ -187,7 +187,7 @@ void test5(void){
 	printf("ending sleep\r\n");
 }
 
-void volt_calc(void){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
+void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
 	uint16_t volt_min=65535,volt_max=0,volt_avg=0,total_cells=0;
 	uint32_t volt_total=0;
 	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
@@ -212,16 +212,16 @@ void volt_calc(void){//collects voltages across all ICs calculate minimum, maxim
     volt_avg = volt_total/total_cells;
     //printf("volt total %d, volt_avg %d\r\n",volt_total,volt_avg);
     //printf("vmax: %d, vmin %d, vavg, %d\r\n",volt_max,volt_min,volt_avg);
-    a_d.v_max = volt_max;
-    a_d.v_min = volt_min;
-    a_d.v_avg = volt_avg;
+    *a_d.v_max = volt_max;
+    *a_d.v_min = volt_min;
+    *a_d.v_avg = volt_avg;
 }
 
-void coll_cell_volt(void){
-	  wakeup_sleep(TOTAL_IC);
-	  LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
-	  conv_time = LTC6813_pollAdc();
-	  print_conv_time(conv_time);  //gotta fix this whole part
+void coll_cell_volt(uint8_t nargs, char **args){
+	wakeup_sleep(TOTAL_IC);
+	LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
+	conv_time = LTC6813_pollAdc();
+	print_conv_time(conv_time);  //gotta fix this whole part
 
     wakeup_sleep(TOTAL_IC);
     error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d.BMS_IC); // Set to read back all cell voltage registers
@@ -229,11 +229,52 @@ void coll_cell_volt(void){
     print_cells(DATALOG_DISABLED);
 }
 
-void temp_calc(void){
+void cb_test(uint8_t nargs, char **args){
+    //s_pin_read = select_s_pin();
+    s_pin_read = 4;
+    wakeup_sleep(TOTAL_IC);
+    LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d.BMS_IC);
+    LTC6813_wrcfg(TOTAL_IC,a_d.BMS_IC);
+    LTC6813_wrcfgb(TOTAL_IC,a_d.BMS_IC);
+    print_wrconfig();
+    print_wrconfigb();
+    wakeup_idle(TOTAL_IC);
+    error = LTC6813_rdcfg(TOTAL_IC,a_d.BMS_IC);
+    check_error(error);
+    error = LTC6813_rdcfgb(TOTAL_IC,a_d.BMS_IC);
+    check_error(error);
+    print_rxconfig();
+    print_rxconfigb();
+    for(int i = 0; i<20; i++){
+    	coll_cell_volt(NULL,NULL);
+    	printf("%.04f\r\n",a_d.BMS_IC[0].cells.c_codes[3]*0.0001);
+    	u_sleep(1000);
+    }
+    //stop_balance();
+}
+
+void stop_balance(uint8_t nargs, char **args){
+    wakeup_sleep(TOTAL_IC);
+    LTC6813_clear_discharge(TOTAL_IC,a_d.BMS_IC);
+    LTC6813_wrcfg(TOTAL_IC,a_d.BMS_IC);
+    LTC6813_wrcfgb(TOTAL_IC,a_d.BMS_IC);
+    print_wrconfig();
+    print_wrconfigb();
+    wakeup_idle(TOTAL_IC);
+    error = LTC6813_rdcfg(TOTAL_IC,a_d.BMS_IC);
+    check_error(error);
+    error = LTC6813_rdcfgb(TOTAL_IC,a_d.BMS_IC);
+    check_error(error);
+    print_rxconfig();
+    print_rxconfigb();
+    printf("balance stopped\r\n");
+}
+
+void temp_calc(uint8_t nargs, char **args){
 
 }
 
-void get_cell_data(void){
+void get_cell_data(uint8_t nargs, char **args){
 	printf("\r\nTotal Cells: %d\
 			\r\nTotal IC:    %d\
 			\r\nVolt Min:    %.04f\
@@ -241,7 +282,7 @@ void get_cell_data(void){
 			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,*a_d.v_min*.0001,*a_d.v_max*.0001,*a_d.v_avg*.0001);
 }
 
-void can_test(void){
+void can_test(uint8_t nargs, char **args){
 	CAN_TxHeaderTypeDef TxHeader;
 	uint32_t TxMailbox;
 	//uint8_t TxData[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
@@ -250,11 +291,11 @@ void can_test(void){
     {
       /* Transmission request Error */
     	printf("broke\r\n");
-      Error_Handler();
+      //Error_Handler();
     }
 }
 
-void pwm_out_test(void){
+void pwm_out_test(uint8_t nargs, char **args){
 	  int32_t dutyCycle = 0;
 	  while (1)
 	  {
@@ -295,11 +336,11 @@ void pwm_out_test(void){
 	  }
 }
 
-void pwm_in_test(void){
-	printf("Duty %f Freq %ul\r\n",*a_d.Duty,*a_d.Freq);
+void pwm_in_test(uint8_t nargs, char **args){
+	printf("Duty %f Freq %lu\r\n",*a_d.Duty,*a_d.Freq);
 }
 
-void dac_test(void){
+void dac_test(uint8_t nargs, char **args){
 	uint32_t DAC_OUT[4] = {0, 1241, 2482, 3723};
 	uint8_t i = 0;
 	while(1){
@@ -313,7 +354,7 @@ void dac_test(void){
 	}
 }
 
-void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
+void charging_mode(uint8_t nargs, char **args){//activated by GPIO Signal going high from external source(interrupt)
 	while(mode_flag==CHARGING){
 		//check if charge current limit >0
 		if(CCL>0){
@@ -332,7 +373,7 @@ void charging_mode(){//activated by GPIO Signal going high from external source(
 	}
 }
 
-void discharge_mode(){//default mode ~when GPIO Signal is low
+void discharge_mode(uint8_t nargs, char **args){//default mode ~when GPIO Signal is low
 	while(mode_flag==DISCHARGING){
 		//check if discharge current limit >0
 		if(DCL>0){
@@ -349,21 +390,124 @@ void discharge_mode(){//default mode ~when GPIO Signal is low
 	}
 }
 
-void print_conv_time(uint32_t conv_time)
+/*!******************************************************************************
+ \brief Prints the configuration data that is going to be written to the LTC6813
+ to the serial port.
+ @return void
+ ********************************************************************************/
+void print_wrconfig(void)
 {
-  uint16_t m_factor=1000;  // to print in ms
-
-  //Serial.print(F("Conversion completed in:"));
-  //Serial.print(((float)conv_time/m_factor), 1);
-  //Serial.println(F("ms \n"));
-  printf("Conversion completed in %f ms\r\n",(float)conv_time/m_factor);
+    int cfg_pec;
+    //Serial.println(F("Written Configuration A Register: "));
+    printf("Written Configuration A Register: \r\n");
+    for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+    {
+      //Serial.print(F("CFGA IC "));
+      //Serial.print(current_ic+1,DEC);
+      printf("CFGA IC %d",current_ic+1);
+      for(int i = 0;i<6;i++)
+      {
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].config.tx_data[i]);
+        printf(", %.02x",a_d.BMS_IC[current_ic].config.tx_data[i]);
+      }
+      //Serial.print(F(", Calculated PEC: 0x"));
+      cfg_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].config.tx_data[0]);
+      //serial_print_hex((uint8_t)(cfg_pec>>8));
+      //Serial.print(F(", 0x"));
+      //serial_print_hex((uint8_t)(cfg_pec));
+      //Serial.println("\n");
+      printf(", Calculated PEC: %.02x\r\n",cfg_pec);
+    }
 }
 
-void check_error(int error)
+/*!******************************************************************************
+ \brief Prints the Configuration Register B data that is going to be written to
+ the LTC6813 to the serial port.
+  @return void
+ ********************************************************************************/
+void print_wrconfigb(void)
 {
-  if (error == -1)
+    int cfg_pec;
+    //Serial.println(F("Written Configuration B Register: "));
+    printf("Written Configuration B Register: \r\n");
+    for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+    {
+      //Serial.print(F("CFGB IC "));
+      //Serial.print(current_ic+1,DEC);
+      printf("CFGB IC %d",current_ic+1);
+      for(int i = 0;i<6;i++)
+      {
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].configb.tx_data[i]);
+        printf(", %.02x",a_d.BMS_IC[current_ic].config.tx_data[i]);
+      }
+      //Serial.print(F(", Calculated PEC: 0x"));
+      cfg_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].configb.tx_data[0]);
+      //serial_print_hex((uint8_t)(cfg_pec>>8));
+      //Serial.print(F(", 0x"));
+      //serial_print_hex((uint8_t)(cfg_pec));
+      //Serial.println("\n");
+      printf(", Calculated PEC: %.02x\r\n",cfg_pec);
+    }
+}
+
+/*!*****************************************************************
+ \brief Prints the configuration data that was read back from the
+ LTC6813 to the serial port.
+ @return void
+ *******************************************************************/
+void print_rxconfig(void)
+{
+  //Serial.println(F("Received Configuration A Register: "));
+  printf("Received Configuration A Register: \r\n");
+  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
   {
-    printf("A PEC error was detected in the received data\r\n");
+    //Serial.print(F("CFGA IC "));
+    //Serial.print(current_ic+1,DEC);
+    printf("CFGA IC %d",current_ic+1);
+
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].config.rx_data[i]);
+      printf(", %.02x",a_d.BMS_IC[current_ic].config.rx_data[i]);
+    }
+    //Serial.print(F(", Received PEC: 0x"));
+    //serial_print_hex(BMS_IC[current_ic].config.rx_data[6]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].config.rx_data[7]);
+    //Serial.println("\n");
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].config.rx_data[6],a_d.BMS_IC[current_ic].config.rx_data[7]);
+  }
+}
+
+/*!*****************************************************************
+ \brief Prints the Configuration Register B that was read back from
+ the LTC6813 to the serial port.
+  @return void
+ *******************************************************************/
+void print_rxconfigb(void)
+{
+  //Serial.println(F("Received Configuration B Register: "));
+  printf("Received Configuration B Register: \r\n");
+  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F("CFGB IC "));
+    //Serial.print(current_ic+1,DEC);
+    printf("CFGB IC %d",current_ic+1);
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].configb.rx_data[i]);
+      printf(", %.02x",a_d.BMS_IC[current_ic].configb.rx_data[i]);
+    }
+    //Serial.print(F(", Received PEC: 0x"));
+    //serial_print_hex(BMS_IC[current_ic].configb.rx_data[6]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].configb.rx_data[7]);
+    //Serial.println("\n");
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].configb.rx_data[6],a_d.BMS_IC[current_ic].configb.rx_data[7]);
   }
 }
 
@@ -403,6 +547,528 @@ void print_cells(uint8_t datalog_en)
   }
   //Serial.println("\n");
   printf("\r\n");
+}
+
+/*!****************************************************************************
+  \brief Prints GPIO voltage codes and Vref2 voltage code onto the serial port
+  @return void
+ *****************************************************************************/
+void print_aux(uint8_t datalog_en)
+{
+  for (int current_ic =0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    if (datalog_en == 0)
+    {
+      //Serial.print(" IC ");
+      //Serial.print(current_ic+1,DEC);
+      printf(" IC %d",current_ic+1);
+      for (int i=0; i < 5; i++)
+      {
+        //Serial.print(F(" GPIO-"));
+        //Serial.print(i+1,DEC);
+        //Serial.print(":");
+        //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
+        //Serial.print(",");
+        printf(" GPIO-%d:%f,",i+1,a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+      }
+
+      for (int i=6; i < 10; i++)
+      {
+        //Serial.print(F(" GPIO-"));
+        //Serial.print(i,DEC);
+        //Serial.print(":");
+        //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
+        printf(" GPIO-%d:%f,",i+1,a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+      }
+
+      //Serial.print(F(" Vref2"));
+      //Serial.print(":");
+      //Serial.print(BMS_IC[current_ic].aux.a_codes[5]*0.0001,4);
+      //Serial.println();
+
+      //Serial.print(" OV/UV Flags : 0x");
+      //Serial.print((uint8_t)BMS_IC[current_ic].aux.a_codes[11],HEX);
+      //Serial.println();
+      printf(" Vref2:%f\r\n OV/UV Flags : %x\r\n",a_d.BMS_IC[current_ic].aux.a_codes[5]*0.0001,(uint8_t)a_d.BMS_IC[current_ic].aux.a_codes[11]);
+    }
+    else
+    {
+      //Serial.print(" AUX, ");
+      printf(" AUX, ");
+
+      for (int i=0; i < 12; i++)
+      {
+        //Serial.print((uint8_t)BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
+        //Serial.print(",");
+        printf("%f,",(uint8_t)a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+      }
+    }
+  }
+ //Serial.println("\n");
+ printf("\r\n");
+}
+
+/*!****************************************************************************
+  \brief Prints Status voltage codes and Vref2 voltage code onto the serial port
+  @return void
+ *****************************************************************************/
+void print_stat(void)
+{
+  for (int current_ic =0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    double itmp;
+
+    itmp = (double)((a_d.BMS_IC[current_ic].stat.stat_codes[1] * (0.0001 / 0.0076)) - 276);   //Internal Die Temperature(°C) = ITMP • (100 µV / 7.6mV)°C - 276°C
+    /*Serial.print(F(" IC "));
+    Serial.print(current_ic+1,DEC);
+    Serial.print(F(" SOC:"));
+    Serial.print(BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30,4);
+    Serial.print(F(","));
+    Serial.print(F(" Itemp:"));
+    itmp = (double)((BMS_IC[current_ic].stat.stat_codes[1] * (0.0001 / 0.0076)) - 276);   //Internal Die Temperature(°C) = ITMP • (100 µV / 7.6mV)°C - 276°C
+    Serial.print(itmp,4);
+    Serial.print(F(","));
+    Serial.print(F(" VregA:"));
+    Serial.print(BMS_IC[current_ic].stat.stat_codes[2]*0.0001,4);
+    Serial.print(F(","));
+    Serial.print(F(" VregD:"));
+    Serial.print(BMS_IC[current_ic].stat.stat_codes[3]*0.0001,4);
+    Serial.println();*/
+    printf(" IC %d SOC:%f, Itemp:%f, VregA:%f, VregD:%f\r\n",current_ic+1,a_d.BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30,itmp,a_d.BMS_IC[current_ic].stat.stat_codes[2]*0.0001,a_d.BMS_IC[current_ic].stat.stat_codes[3]*0.0001);
+    //Serial.print(F(" OV/UV Flags:"));
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].stat.flags[0]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].stat.flags[1]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].stat.flags[2]);
+     //Serial.print(F("\tMux fail flag:"));
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].stat.mux_fail[0]);
+     //Serial.print(F("\tTHSD:"));
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].stat.thsd[0]);
+    //Serial.println();
+    printf(" OV/UV Flags:, %.02x, %.02x, %.02x\tMux fail flag: %.02x\tTHSD:, %.02x\r\n",a_d.BMS_IC[current_ic].stat.flags[0],a_d.BMS_IC[current_ic].stat.flags[1],a_d.BMS_IC[current_ic].stat.flags[2],a_d.BMS_IC[current_ic].stat.mux_fail[0],a_d.BMS_IC[current_ic].stat.thsd[0]);
+  }
+  //Serial.println("\n");
+  printf("\r\n");
+}
+
+/*!****************************************************************************
+  \brief Prints GPIO voltage codes (GPIO 1 & 2)
+  @return void
+ *****************************************************************************/
+void print_aux1(uint8_t datalog_en)
+{
+
+  for (int current_ic =0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    if (datalog_en == 0)
+    {
+      //Serial.print(" IC ");
+      //Serial.print(current_ic+1,DEC);
+      printf(" IC %d",current_ic+1);
+      for (int i=0; i < 2; i++)
+      {
+        //Serial.print(F(" GPIO-"));
+        //Serial.print(i+1,DEC);
+        //Serial.print(":");
+        //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
+        //Serial.print(",");
+        printf(" GPIO-%d:%f,",i+1,a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+      }
+    }
+    else
+    {
+      //Serial.print("AUX, ");
+      printf("AUX, ");
+
+      for (int i=0; i < 12; i++)
+      {
+        //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
+        //Serial.print(",");
+        printf("%f,",a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+      }
+    }
+  }
+  //Serial.println("\n");
+  printf("\r\n");
+}
+
+/*!****************************************************************************
+  \brief Prints Status voltage codes for SOC onto the serial port
+ *****************************************************************************/
+void print_sumofcells(void)
+{
+  for (int current_ic =0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC "));
+    //Serial.print(current_ic+1,DEC);
+    //Serial.print(F(" SOC:"));
+    //Serial.print(BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30,4);
+    //Serial.print(F(","));
+    printf(" IC %d SOC:%f,",current_ic+1,a_d.BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30);
+  }
+  //Serial.println("\n");
+  printf("\r\n");
+}
+
+/*!****************************************************************
+  \brief Function to check the MUX fail bit in the Status Register
+   @return void
+*******************************************************************/
+void check_mux_fail(void)
+{
+  int8_t error = 0;
+  for (int ic = 0; ic<TOTAL_IC; ic++)
+    {
+      //Serial.print(" IC ");
+      //Serial.println(ic+1,DEC);
+      printf(" IC %d,",ic+1);
+      if (a_d.BMS_IC[ic].stat.mux_fail[0] != 0) error++;
+
+      if (error==0) printf("MUX Test: PASS \r\n");//Serial.println(F("Mux Test: PASS \n"));
+      else printf("Mux Test: FAIL \r\n");//Serial.println(F("Mux Test: FAIL \n"));
+    }
+}
+
+/*!************************************************************
+  \brief Prints Errors Detected during self test
+   @return void
+*************************************************************/
+void print_selftest_errors(uint8_t adc_reg ,int8_t error)
+{
+  if(adc_reg==1)
+  {
+    //Serial.println("Cell ");
+    printf("Cell \r\n");
+    }
+  else if(adc_reg==2)
+  {
+    //Serial.println("Aux ");
+    printf("Aux \r\n");
+    }
+  else if(adc_reg==3)
+  {
+    //Serial.println("Stat ");
+    printf("Stat \r\n");
+    }
+  //Serial.print(error, DEC);
+  //Serial.println(F(" : errors detected in Digital Filter and Memory \n"));
+  printf("%d : errors detected in Digital Filter and Memory\r\n",error);
+}
+
+/*!************************************************************
+  \brief Prints the output of  the ADC overlap test
+   @return void
+*************************************************************/
+void print_overlap_results(int8_t error)
+{
+  if (error==0) printf("Overlap Test: PASS \r\n");//Serial.println(F("Overlap Test: PASS \n"));
+  else printf("Overlap Test: FAIL \r\n");//Serial.println(F("Overlap Test: FAIL \n"));
+}
+
+/*!************************************************************
+  \brief Prints Errors Detected during Digital Redundancy test
+   @return void
+*************************************************************/
+void print_digital_redundancy_errors(uint8_t adc_reg ,int8_t error)
+{
+  if(adc_reg==2)
+  {
+    //Serial.println("Aux ");
+    printf("Aux \r\n");
+    }
+  else if(adc_reg==3)
+  {
+    //Serial.println("Stat ");
+    printf("Stat \r\n");
+    }
+
+  //Serial.print(error, DEC);
+  //Serial.println(F(" : errors detected in Measurement \n"));
+  printf("%d : errors detected in Measurement\r\n",error);
+}
+
+/*!****************************************************************************
+  \brief Prints Open wire test results to the serial port
+ *****************************************************************************/
+void print_open_wires(void)
+{
+  for (int current_ic =0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    if (a_d.BMS_IC[current_ic].system_open_wire == 65535)
+    {
+      //Serial.print("No Opens Detected on IC ");
+      //Serial.print(current_ic+1, DEC);
+      //Serial.println();
+      printf("No Opens Detected on IC %d\r\n",current_ic+1);
+    }
+    else
+    {
+      //Serial.print(F("There is an open wire on IC "));
+      //Serial.print(current_ic + 1,DEC);
+      //Serial.print(F(" Channel: "));
+      //Serial.println(BMS_IC[current_ic].system_open_wire);
+      printf("There is an open wire on IC %d Channel: %ld\r\n",current_ic+1,a_d.BMS_IC[current_ic].system_open_wire);
+    }
+  }
+  //Serial.println("\n");
+  printf("\r\n");
+}
+
+/*!****************************************************************************
+   \brief Function to print the number of PEC Errors
+   @return void
+ *****************************************************************************/
+void print_pec_error_count(void)
+{
+  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
+  {
+      //Serial.println("");
+      //Serial.print(BMS_IC[current_ic].crc_count.pec_count,DEC);
+      //Serial.print(F(" : PEC Errors Detected on IC"));
+      //Serial.println(current_ic+1,DEC);
+      printf("\r\n%d : PEC Errors Detected on IC%d",a_d.BMS_IC[current_ic].crc_count.pec_count,current_ic+1);
+  }
+  //Serial.println("\n");
+  printf("\r\n");
+}
+
+/*!****************************************************************************
+  \brief prints data which is written on PWM register onto the serial port
+  @return void
+ *****************************************************************************/
+void print_wrpwm(void)
+{
+  int pwm_pec;
+
+  //Serial.println(F("Written PWM Configuration: "));
+  printf("Written PWM Configuration: \r\n");
+  for (uint8_t current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F("IC "));
+    //Serial.print(current_ic+1,DEC);
+    printf("IC %d",current_ic+1);
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+     //serial_print_hex(BMS_IC[current_ic].pwm.tx_data[i]);
+     printf(", %.02x",a_d.BMS_IC[current_ic].pwm.tx_data[i]);
+    }
+    //Serial.print(F(", Calculated PEC: 0x"));
+    pwm_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].pwm.tx_data[0]);
+    //serial_print_hex((uint8_t)(pwm_pec>>8));
+    //Serial.print(F(", 0x"));
+    //serial_print_hex((uint8_t)(pwm_pec));
+    //Serial.println("\n");
+    printf(", Calculated PEC: %.02x, %.02x\r\n",(uint8_t)(pwm_pec>>8),(uint8_t)(pwm_pec));
+  }
+}
+
+/*!****************************************************************************
+  \brief Prints received data from PWM register onto the serial port
+  @return void
+ *****************************************************************************/
+void print_rxpwm(void)
+{
+  //Serial.println(F("Received pwm Configuration:"));
+  printf("Received pwm Configuration:\r\n");
+  for (uint8_t current_ic=0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F("IC "));
+    //Serial.print(current_ic+1,DEC);
+    printf("IC %d",current_ic+1);
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+     //serial_print_hex(BMS_IC[current_ic].pwm.rx_data[i]);
+     printf(", %.02x",a_d.BMS_IC[current_ic].pwm.rx_data[i]);
+    }
+    //Serial.print(F(", Received PEC: 0x"));
+    //serial_print_hex(BMS_IC[current_ic].pwm.rx_data[6]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].pwm.rx_data[7]);
+    //Serial.println("\n");
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].pwm.rx_data[6],a_d.BMS_IC[current_ic].pwm.rx_data[7]);
+  }
+}
+
+/*!****************************************************************************
+  \brief prints data which is written on S Control register
+  @return void
+ *****************************************************************************/
+void print_wrsctrl(void)
+{
+    int sctrl_pec;
+
+  //Serial.println(F("Written Data in Sctrl register: "));
+  printf("Written Data in Sctrl register: \r\n");
+  for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC: "));
+    //Serial.print(current_ic+1,DEC);
+    //Serial.print(F(" Sctrl register group:"));
+    printf(" IC: %d Sctrl register group:",current_ic+1);
+    for(int i = 0; i < 6; i++)
+    {
+      //Serial.print(F(", 0x"));
+      //serial_print_hex(BMS_IC[current_ic].sctrl.tx_data[i]);
+      printf(", %.02x",a_d.BMS_IC[current_ic].sctrl.tx_data[i]);
+    }
+
+    //Serial.print(F(", Calculated PEC: 0x"));
+    sctrl_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].sctrl.tx_data[0]);
+    //serial_print_hex((uint8_t)(sctrl_pec>>8));
+    //Serial.print(F(", 0x"));
+    //serial_print_hex((uint8_t)(sctrl_pec));
+    //Serial.println("\n");
+    printf(", Calculated PEC: %.02x, %.02x\r\n",(uint8_t)(sctrl_pec>>8),(uint8_t)(sctrl_pec));
+  }
+}
+
+/*!****************************************************************************
+  \brief prints data which is read back from S Control register
+  @return void
+ *****************************************************************************/
+void print_rxsctrl(void)
+{
+   //Serial.println(F("Received Data:"));
+   printf("Received Data:\r\n");
+  for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" IC "));
+    //Serial.print(current_ic+1,DEC);
+    printf(" IC %d",current_ic+1);
+
+    for(int i = 0; i < 6; i++)
+    {
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].sctrl.rx_data[i]);
+    printf(", %.02x",a_d.BMS_IC[current_ic].sctrl.rx_data[i]);
+    }
+
+    //Serial.print(F(", Received PEC: 0x"));
+    //serial_print_hex(BMS_IC[current_ic].sctrl.rx_data[6]);
+    //Serial.print(F(", 0x"));
+    //serial_print_hex(BMS_IC[current_ic].sctrl.rx_data[7]);
+    //Serial.println("\n");
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].sctrl.rx_data[6],a_d.BMS_IC[current_ic].sctrl.rx_data[7]);
+  }
+}
+
+/*!****************************************************************************
+  \brief Prints data which is written on PWM/S control register group B onto
+  the serial port
+   @return void
+ *****************************************************************************/
+void print_wrpsb(uint8_t type)
+{
+  int psb_pec=0;
+
+  //Serial.println(F(" PWM/S control register group B: "));
+  printf(" PWM/S control register group B: \r\n");
+  for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+  {
+      if(type == 1)
+      {
+        //Serial.print(F(" IC: "));
+        //Serial.println(current_ic+1,DEC);
+        //Serial.print(F(" 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.tx_data[0]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.tx_data[1]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.tx_data[2]);
+        printf(" IC %d, %.02x, %.02x, %.02x",current_ic+1,a_d.BMS_IC[current_ic].pwmb.tx_data[0],a_d.BMS_IC[current_ic].pwmb.tx_data[1],a_d.BMS_IC[current_ic].pwmb.tx_data[2]);
+
+        //Serial.print(F(", Calculated PEC: 0x"));
+        psb_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].pwmb.tx_data[0]);
+        //serial_print_hex((uint8_t)(psb_pec>>8));
+        //Serial.print(F(", 0x"));
+        //serial_print_hex((uint8_t)(psb_pec));
+        //Serial.println("\n");
+        printf(", Calculated PEC: %.02x, %.02x\r\n",(uint8_t)(psb_pec>>8),(uint8_t)(psb_pec));
+      }
+      else if(type == 2)
+      {
+        //Serial.print(F(" IC: "));
+        //Serial.println(current_ic+1,DEC);
+        printf(" IC %d\r\n",current_ic+1);
+        //Serial.print(F(" 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.tx_data[3]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.tx_data[4]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.tx_data[5]);
+
+        //Serial.print(F(", Calculated PEC: 0x"));
+        psb_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].sctrlb.tx_data[0]);
+        //serial_print_hex((uint8_t)(psb_pec>>8));
+        //Serial.print(F(", 0x"));
+        //serial_print_hex((uint8_t)(psb_pec));
+        //Serial.println("\n");
+        printf(" %.02x, %.02x, %.02x, Calculated PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].sctrlb.tx_data[3],a_d.BMS_IC[current_ic].sctrlb.tx_data[4],a_d.BMS_IC[current_ic].sctrlb.tx_data[5],(uint8_t)(psb_pec>>8),(uint8_t)(psb_pec));
+      }
+  }
+}
+
+
+/*!****************************************************************************
+  \brief Prints received data from PWM/S control register group B
+   onto the serial port
+   @return void
+ *****************************************************************************/
+void print_rxpsb(uint8_t type)
+{
+  //Serial.println(F(" PWM/S control register group B:"));
+  printf(" PWM/S control register group B:\r\n");
+  if(type == 1)
+  {
+      for (int current_ic=0; current_ic<TOTAL_IC; current_ic++)
+      {
+        //Serial.print(F(" IC: "));
+        //Serial.println(current_ic+1,DEC);
+        printf(" IC: %d \r\n",current_ic+1);
+        //Serial.print(F(" 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.rx_data[0]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.rx_data[1]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.rx_data[2]);
+
+        //Serial.print(F(", Received PEC: 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.rx_data[6]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].pwmb.rx_data[7]);
+       //Serial.println("\n");
+       printf(" %.02x, %.02x, %.02x, Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].pwmb.rx_data[0],a_d.BMS_IC[current_ic].pwmb.rx_data[1],a_d.BMS_IC[current_ic].pwmb.rx_data[2],a_d.BMS_IC[current_ic].pwmb.rx_data[6],a_d.BMS_IC[current_ic].pwmb.rx_data[7]);
+
+      }
+  }
+   else if(type == 2)
+  {
+      for (int current_ic = 0; current_ic<TOTAL_IC; current_ic++)
+      {
+        //Serial.print(F(" IC: "));
+        //Serial.println(current_ic+1,DEC);
+        printf(" IC: %d\r\n",current_ic+1);
+        //Serial.print(F(" 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.rx_data[3]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.rx_data[4]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.rx_data[5]);
+
+        //Serial.print(F(", Received PEC: 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.rx_data[6]);
+        //Serial.print(F(", 0x"));
+        //serial_print_hex(BMS_IC[current_ic].sctrlb.rx_data[7]);
+        //Serial.println("\n");
+        printf(" %.02x, %.02x, %.02x, Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].sctrlb.rx_data[3],a_d.BMS_IC[current_ic].sctrlb.rx_data[4],a_d.BMS_IC[current_ic].sctrlb.rx_data[5],a_d.BMS_IC[current_ic].sctrlb.rx_data[6],a_d.BMS_IC[current_ic].sctrlb.rx_data[7]);
+      }
+  }
 }
 
 /*!****************************************************************************
@@ -466,6 +1132,40 @@ void print_rxcomm(void)
     printf(", Received PEC: %x, %x\r\n",a_d.BMS_IC[current_ic].com.rx_data[6],a_d.BMS_IC[current_ic].com.rx_data[7]);
   }
 }
+
+/*!********************************************************************
+  \brief Function to check the Mute bit in the Configuration Register
+   @return void
+**********************************************************************/
+void check_mute_bit(void)
+{
+  for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
+  {
+    //Serial.print(F(" Mute bit in Configuration Register B: 0x"));
+    //serial_print_hex((BMS_IC[current_ic].configb.rx_data[1])&(0x80));
+    //Serial.println("\n");
+    printf(" Mute bit in Configuration Register B: %.02x\r\n",(a_d.BMS_IC[current_ic].configb.rx_data[1])&(0x80));
+  }
+}
+
+void print_conv_time(uint32_t conv_time)
+{
+  uint16_t m_factor=1000;  // to print in ms
+
+  //Serial.print(F("Conversion completed in:"));
+  //Serial.print(((float)conv_time/m_factor), 1);
+  //Serial.println(F("ms \n"));
+  printf("Conversion completed in %f ms\r\n",(float)conv_time/m_factor);
+}
+
+void check_error(int error)
+{
+  if (error == -1)
+  {
+    printf("A PEC error was detected in the received data\r\n");
+  }
+}
+
 
 void init_app_data_bms(app_data *app_data_init)
 {

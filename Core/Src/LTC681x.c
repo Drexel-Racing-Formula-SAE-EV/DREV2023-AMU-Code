@@ -954,11 +954,13 @@ uint32_t LTC681x_pollAdc()
 		current_time = spi_read_byte(0xff);
 		if (current_time>0)
 		{
+			//printf("curr time fin: %d\r\n",current_time);
 			finished = 1;
 		}
 		else
 		{
 			counter = counter + 10;
+			//printf("curr time:%d\r\n",current_time);
 		}
 		//HAL_Delay(1000);
 	}
