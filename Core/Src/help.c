@@ -10,7 +10,7 @@
 static app_data a_d;
 
 
-void u_sleep(uint32_t microseconds){
+void u_sleep(uint32_t microseconds){//only works up to 65535 should i update this to check if timer lapsed to allow for infinite timer?
 	__HAL_TIM_SET_COUNTER(a_d.htim8,0);  // set the counter value a 0
 	while (__HAL_TIM_GET_COUNTER(a_d.htim8) < microseconds);  // wait for the counter to reach the us input in the parameter
 }

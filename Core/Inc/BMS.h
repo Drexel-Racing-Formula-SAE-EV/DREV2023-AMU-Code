@@ -34,7 +34,11 @@ void cb_test(uint8_t nargs, char **args);
 
 void stop_balance(uint8_t nargs, char **args);
 
+void bal_all(uint8_t nargs, char **args);
+
 void get_cell_data(uint8_t nargs, char **args);
+
+void coll_unbalanced_cells(void);
 
 void can_test(uint8_t nargs, char **args);
 
@@ -53,6 +57,16 @@ void print_conv_time(uint32_t conv_time);
 void check_error(int error);
 
 void print_cells(uint8_t datalog_en);
+
+void print_wrconfig(void);
+
+void print_wrconfigb(void);
+
+void print_rxconfig(void);
+
+void print_rxconfigb(void);
+
+
 
 void print_rxcomm(void);
 

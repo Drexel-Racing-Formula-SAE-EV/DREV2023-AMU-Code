@@ -157,6 +157,9 @@ uint16_t v_avg = 0;
 uint32_t Freq = 0;
 float Duty = 0;
 uint8_t stop_flag = 0;
+uint8_t s_pin = 0;
+uint8_t cvnb[18];
+uint8_t tap = 0;
 
 DATALOG_DISABLED;
 //declare app_data
@@ -250,7 +253,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   a_d.hcan1 = &hcan1;
   a_d.hspi1 = &hspi2;//flip back
-  a_d.hspi2 = &hspi2;//flip bakc
+  a_d.hspi2 = &hspi3;//flip bakc
   a_d.huart2 = &huart2;
   a_d.hdma_usart2_rx = &hdma_usart2_rx;
   a_d.htim1 = &htim1;
@@ -266,6 +269,9 @@ int main(void)
   a_d.Freq = &Freq;
   a_d.Duty = &Duty;
   a_d.stop_flag = &stop_flag;
+  a_d.s_pin = &s_pin;
+  a_d.cvnb = &cvnb;
+  a_d.tap = &tap;
   a_d.BMS_IC = &BMS_IC;
 
   init_appdata(&a_d);
@@ -1107,7 +1113,6 @@ static void MX_GPIO_Init(void)
 //assign AIR to GPIO PIN
 
 uint32_t ICValue = 0;
-int i = 0;
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // If the interrupt is triggered by channel 1
 	{

@@ -188,6 +188,12 @@ typedef struct
 
 	uint16_t *v_avg;
 
+	uint8_t *s_pin;
+	//cell voltage not balanced/too high array[18]
+	uint8_t **cvnb;
+	//track cvnb position for marking unbalanced cells
+	uint8_t *tap;
+
 	uint32_t *Freq;
 
 	float *Duty;

@@ -47,6 +47,7 @@ static const sc_command console_commands[] = {
 	{"pwmint", "PWM in Test WARNING INFINITE", pwm_in_test},
 	{"dact", "DAC TEST WARNING INFINITE", dac_test},
 	{"cbt", "Cell Balancing Test", cb_test},
+	{"bal", "Balance All Cells in a Segment", bal_all},
 	{"sb", "Stops All Cell Balancing", stop_balance}
 };
 

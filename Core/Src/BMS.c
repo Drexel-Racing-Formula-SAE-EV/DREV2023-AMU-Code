@@ -230,8 +230,17 @@ void coll_cell_volt(uint8_t nargs, char **args){
 }
 
 void cb_test(uint8_t nargs, char **args){
+	if(nargs == 0){
+	    s_pin_read = *a_d.s_pin;
+	}
+	else if(nargs == 1){
+		s_pin_read = atoi(args[1]);
+	}
+	else{
+		printf("too many arguments\r\n");
+	}
     //s_pin_read = select_s_pin();
-    s_pin_read = 4;
+    //s_pin_read = 4;
     wakeup_sleep(TOTAL_IC);
     LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d.BMS_IC);
     LTC6813_wrcfg(TOTAL_IC,a_d.BMS_IC);
@@ -245,12 +254,6 @@ void cb_test(uint8_t nargs, char **args){
     check_error(error);
     print_rxconfig();
     print_rxconfigb();
-    for(int i = 0; i<20; i++){
-    	coll_cell_volt(NULL,NULL);
-    	printf("%.04f\r\n",a_d.BMS_IC[0].cells.c_codes[3]*0.0001);
-    	u_sleep(1000);
-    }
-    //stop_balance();
 }
 
 void stop_balance(uint8_t nargs, char **args){
@@ -268,6 +271,48 @@ void stop_balance(uint8_t nargs, char **args){
     print_rxconfig();
     print_rxconfigb();
     printf("balance stopped\r\n");
+}
+
+/*
+ * Collects all voltages and balances every cell in segment to lowest voltage
+ * -not sure how to implement with multiple segments
+ */
+void bal_all(uint8_t nargs, char **args){
+	//tracks taps previous position
+	uint8_t old_tap = 0;
+	//was balancing stopped? 0 yes 1 no
+	uint8_t stp = 0;
+	coll_cell_volt(0,NULL);
+	volt_calc(0,NULL);
+	printf("vmin: %d\r\n",*a_d.v_min);
+	coll_unbalanced_cells();
+	while(*a_d.tap > 0){
+		if(stp == 0){//if balancing is not active
+			//turns on balancing for all pins above threshold
+			for(int i = 0; i<*a_d.tap;i++){
+				*a_d.s_pin = *a_d.cvnb[i];
+				cb_test(0,NULL);
+			}
+			stp = 1;
+		}
+		old_tap = *a_d.tap;
+		coll_unbalanced_cells();
+		if(old_tap > *a_d.tap){
+			stop_balance(0,NULL);
+		}
+		u_sleep(15000);//sleeps so other functions can continue
+	}
+}
+
+void coll_unbalanced_cells(void){
+	coll_cell_volt(0,NULL);
+	*a_d.tap = 0;
+	for (int j = 0; j<18; j++){
+		if(a_d.BMS_IC[0].cells.c_codes[j] >= *a_d.v_min+500){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
+			*a_d.cvnb[*a_d.tap] = j;
+			*a_d.tap += 1;
+		}
+	}
 }
 
 void temp_calc(uint8_t nargs, char **args){
