@@ -187,6 +187,63 @@ void test5(uint8_t nargs, char **args){
 	printf("ending sleep\r\n");
 }
 
+void run_test(uint8_t nargs, char **args){
+	if(nargs == 1){
+		if(strcmp(args[1], "charge") == 0){
+			charging_mode(0,NULL);
+		}
+		else if(strcmp(args[1], "discharge") == 0){
+			discharge_mode(0,NULL);
+		}
+		else if(strcmp(args[1], "balance") == 0){
+			//mode = balance;
+			bal_all(0,NULL);
+		}
+	}
+}
+
+void display(uint8_t nargs, char **args){
+	if(nargs == 1){
+		if(strcmp(args[1], "overall") == 0){
+
+		}
+		else if(strcmp(args[1], "temp") == 0){
+
+		}
+		else if(strcmp(args[1], "volt") == 0){
+
+		}
+		else{
+			printf("Incorrect ARG\r\n");
+		}
+	}
+	else{
+		printf("ARGS != 1\r\n");
+	}
+}
+
+void edit_params(uint8_t nargs, char **args){
+
+}
+
+void chg_mode(uint8_t nargs, char **args){
+	if(nargs == 1){
+		if(strcmp(args[1], "charge") == 0){
+			charging_mode(0,NULL);
+		}
+		else if(strcmp(args[1], "discharge") == 0){
+			discharge_mode(0,NULL);
+		}
+		else if(strcmp(args[1], "balance") == 0){
+			//mode = balance;
+			bal_all(0,NULL);
+		}
+	}
+	else{
+		printf("too many arguments\r\n");
+	}
+}
+
 void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
 	uint16_t volt_min=65535,volt_max=0,volt_avg=0,total_cells=0;
 	uint32_t volt_total=0;
@@ -282,6 +339,7 @@ void bal_all(uint8_t nargs, char **args){
 	uint8_t old_tap = 0;
 	//was balancing stopped? 0 yes 1 no
 	uint8_t stp = 0;
+	printf("Starting Balancing\r\n");
 	coll_cell_volt(0,NULL);
 	volt_calc(0,NULL);
 	printf("vmin: %d\r\n",*a_d.v_min);
@@ -299,16 +357,19 @@ void bal_all(uint8_t nargs, char **args){
 		coll_unbalanced_cells();
 		if(old_tap > *a_d.tap){
 			stop_balance(0,NULL);
+			printf("1 cell finished! %d left",*a_d.tap);
 		}
 		u_sleep(15000);//sleeps so other functions can continue
 	}
+	printf("Balancing Done\r\n");
+	coll_cell_volt(0,NULL);
 }
 
 void coll_unbalanced_cells(void){
 	coll_cell_volt(0,NULL);
 	*a_d.tap = 0;
 	for (int j = 0; j<18; j++){
-		if(a_d.BMS_IC[0].cells.c_codes[j] >= *a_d.v_min+500){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
+		if(a_d.BMS_IC[0].cells.c_codes[j] >= *a_d.v_min+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
 			*a_d.cvnb[*a_d.tap] = j;
 			*a_d.tap += 1;
 		}

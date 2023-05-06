@@ -24,6 +24,14 @@ void test4(uint8_t nargs, char **args);
 
 void test5(uint8_t nargs, char **args);
 
+void run_test(uint8_t nargs, char **args);
+
+void display(uint8_t nargs, char **args);
+
+void edit_params(uint8_t nargs, char **args);
+
+void chg_mode(uint8_t nargs, char **args);
+
 void coll_cell_volt(uint8_t nargs, char **args);
 
 void temp_calc(uint8_t nargs, char **args);

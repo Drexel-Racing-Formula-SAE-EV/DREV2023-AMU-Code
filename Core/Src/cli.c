@@ -29,14 +29,21 @@ static const char *ERR_BAD_COMMAND
     = "ERR: Unrecognized command. Type \"help\" for help\r\n";
 
 static const sc_command console_commands[] = {
-    {"help",    "Displays list of all available CLI commands",  cli_help          },
-	{"display", "Displays various options Paramaters : ", },
+    {"help",    "Displays list of all available CLI commands",  cli_help},
+	{"display", "Displays {overall, temp, volt} : ", display},
+	{"edit","Edits Paramater (2 ARGS){\r\n\
+\r\n			MC: Max Current\
+\r\n			MACV: Max Cell Voltage\
+\r\n			MICV: Min Cell Voltage\
+\r\n			MAOV: Max System Voltage\
+\r\n			MIOV: Min System Voltage\
+\r\n			MASOC: Max SoC\
+\r\n			MISOC: Min SoC}",edit_params},
 	{"1", "Runs Test 1", test1},
-	{"spi_comm", "Spi Comm Test",spi_comm_test },
+	{"spi_comm", "Spi Comm Test",spi_comm_test},
 	{"4", "Runs Test 4",test4 },
 	{"5", "Runs Test 5",test5 },
-	{"charge", "Turns On Charging Mode",charging_mode },
-	{"discharge", "Turns of Discharge Mode",discharge_mode },
+	{"mode", "Changes Mode {charge, discharge, balance}",chg_mode},
 	{"sis", "Infinite SPI",spi_infinite_send },
 	{"spil", "Spi Loopback", spi_loopback},
 	{"dcd", "Displays Cell Data", get_cell_data},

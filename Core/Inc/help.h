@@ -180,25 +180,34 @@ typedef struct
 
 	cell_asic *BMS_IC;
 
+	uint8_t *stop_flag;
+
+	//PWM IN Values
+	uint32_t *Freq;
+	float *Duty;
+
 	uint8_t *debug;
-
+	//MEASURING
 	uint16_t *v_max;
-
 	uint16_t *v_min;
-
 	uint16_t *v_avg;
 
+	//BALANCING
+	//sets the discharge pin
 	uint8_t *s_pin;
 	//cell voltage not balanced/too high array[18]
 	uint8_t **cvnb;
 	//track cvnb position for marking unbalanced cells
 	uint8_t *tap;
 
-	uint32_t *Freq;
-
-	float *Duty;
-
-	uint8_t *stop_flag;
+	//USER PARAMETERS
+	uint8_t *max_curr;
+	uint8_t *max_cell_volt;
+	uint8_t *min_cell_volt;
+	uint8_t *max_sys_volt;
+	uint8_t *min_sys_volt;
+	uint8_t *max_soc;
+	uint8_t *min_soc;
 
 } app_data;
 

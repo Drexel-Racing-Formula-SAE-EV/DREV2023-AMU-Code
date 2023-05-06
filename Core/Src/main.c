@@ -160,6 +160,14 @@ uint8_t stop_flag = 0;
 uint8_t s_pin = 0;
 uint8_t cvnb[18];
 uint8_t tap = 0;
+//SET DEFAULT VALUES
+uint8_t max_curr=0;
+uint8_t max_cell_volt=0;
+uint8_t min_cell_volt=0;
+uint8_t max_sys_volt=0;
+uint8_t min_sys_volt=0;
+uint8_t max_soc=0;
+uint8_t min_soc=0;
 
 DATALOG_DISABLED;
 //declare app_data
@@ -262,6 +270,7 @@ int main(void)
   a_d.htim8 = &htim8;
   a_d.htim9 = &htim9;
   a_d.hdac = &hdac;
+  a_d.BMS_IC = &BMS_IC;
   a_d.debug = &debugg;
   a_d.v_max = &v_max;
   a_d.v_min = &v_min;
@@ -272,8 +281,13 @@ int main(void)
   a_d.s_pin = &s_pin;
   a_d.cvnb = &cvnb;
   a_d.tap = &tap;
-  a_d.BMS_IC = &BMS_IC;
-
+  a_d.max_curr = &max_curr;
+  a_d.max_cell_volt = &max_cell_volt;
+  a_d.min_cell_volt = &min_cell_volt;
+  a_d.max_sys_volt = &max_sys_volt;
+  a_d.min_sys_volt = &min_sys_volt;
+  a_d.max_soc = &max_soc;
+  a_d.min_soc = &min_soc;
   init_appdata(&a_d);
 
   printf("LETSS GOOOOOOO\r\n");
