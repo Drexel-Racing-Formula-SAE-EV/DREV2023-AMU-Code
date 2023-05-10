@@ -38,7 +38,8 @@ static const sc_command console_commands[] = {
 \r\n			MAOV: Max System Voltage\
 \r\n			MIOV: Min System Voltage\
 \r\n			MASOC: Max SoC\
-\r\n			MISOC: Min SoC}",edit_params},
+\r\n			MISOC: Min SoC\
+\r\n            SPIN: Select 1 Pin for cell discharge 1-18}",edit_params},
 	{"1", "Runs Test 1", test1},
 	{"spi_comm", "Spi Comm Test",spi_comm_test},
 	{"4", "Runs Test 4",test4 },
@@ -49,6 +50,7 @@ static const sc_command console_commands[] = {
 	{"dcd", "Displays Cell Data", get_cell_data},
 	{"ccv", "Collects Cell Voltage", coll_cell_volt},
 	{"vc", "Calculates Voltage", volt_calc},
+	{"fc", "Controls Fan", fan_control},
 	{"cant", "Can Test", can_test},
 	{"pwmot", "PWM out Test WARNING INFINITE", pwm_out_test},
 	{"pwmint", "PWM in Test WARNING INFINITE", pwm_in_test},

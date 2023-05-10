@@ -787,8 +787,8 @@ void LTC6813_set_cfgrb_dcc_b(uint8_t nIC, cell_asic *ic, uint8_t dccbits[])
 void init_app_data_6813(app_data *app_data_init)
 {
 	a_d = *app_data_init;
-	if(a_d.debug==1){
-		printf("prescaler: %u\r\n",a_d.hspi1->Init.BaudRatePrescaler);
+	if(*a_d.debug==1){
+		printf("prescaler: %lu\r\n",a_d.hspi1->Init.BaudRatePrescaler);
 		printf("\r\nDebugging init_app_data_681x\r\n");
 		uint8_t data[3],sent[3];
 		sent[0]=0;

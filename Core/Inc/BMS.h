@@ -32,13 +32,13 @@ void edit_params(uint8_t nargs, char **args);
 
 void chg_mode(uint8_t nargs, char **args);
 
-void coll_cell_volt(uint8_t nargs, char **args);
+void coll_cell_volt(void);
 
 void temp_calc(uint8_t nargs, char **args);
 
 void volt_calc(uint8_t nargs, char **args);
 
-void cb_test(uint8_t nargs, char **args);
+void cb_test(void);
 
 void stop_balance(uint8_t nargs, char **args);
 
@@ -47,6 +47,8 @@ void bal_all(uint8_t nargs, char **args);
 void get_cell_data(uint8_t nargs, char **args);
 
 void coll_unbalanced_cells(void);
+
+void fan_control(uint8_t nargs, char **args);
 
 void can_test(uint8_t nargs, char **args);
 

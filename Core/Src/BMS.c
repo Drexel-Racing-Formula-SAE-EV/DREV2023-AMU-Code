@@ -34,13 +34,13 @@ int8_t error = 0;
 uint32_t conv_time = 0;
 int8_t s_pin_read=0;
 
-int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
-const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
-const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
-const int current_max = 2;//max current allowed for charging system
-int CCL = 2; // current charge limit - initially the max current a cell can handle
-int DCL = 2; // discharge current limit - initially the max current a cell can handle
-int hall_current = 0;
+//int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
+//const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
+//const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
+//const int current_max = 2;//max current allowed for charging system
+//int CCL = 2; // current charge limit - initially the max current a cell can handle
+//int DCL = 2; // discharge current limit - initially the max current a cell can handle
+//int hall_current = 0;
 
 
 void spi_loopback(uint8_t nargs, char **args){
@@ -203,15 +203,20 @@ void run_test(uint8_t nargs, char **args){
 }
 
 void display(uint8_t nargs, char **args){
+	HAL_Delay(50);//consider changing hal delay to os delay
 	if(nargs == 1){
 		if(strcmp(args[1], "overall") == 0){
+//Displays parameters of the battery: max temp of each segment, overall voltage, SoC, instantaneous current, state of AIR control, BMS safe / unsafe, calculated isolation from IMD
 
 		}
 		else if(strcmp(args[1], "temp") == 0){
+//Displays max temp of each segment, body temp values for each segment, overall temp of the pack
 
 		}
 		else if(strcmp(args[1], "volt") == 0){
-
+//Display array of all voltages and overall voltage, updating 1/s
+			*a_d.VDisp = !*a_d.VDisp;
+			printf("VDISP = %d\r\n",*a_d.VDisp);
 		}
 		else{
 			printf("Incorrect ARG\r\n");
@@ -223,7 +228,61 @@ void display(uint8_t nargs, char **args){
 }
 
 void edit_params(uint8_t nargs, char **args){
+	if(nargs == 2){
+		if(atoi(args[2])==0){
+			printf("incorrect 2nd argument input");
+		}
+		else{
+			if(strcmp(args[1], "MC") == 0){
+				*a_d.max_curr = atoi(args[2]);
+				//HAL_Delay(5000);
+				//print statement without delay = death??
+				//printf("value is now %f",*a_d.max_curr);
+				//printf("broken?\r\n");
+			}
+			else if(strcmp(args[1], "MACV") == 0){
+				if(0<atoi(args[2])&&atoi(args[2])<6.6){
+					*a_d.max_cell_volt = atoi(args[2]);
+				}
+				//printf("value is now %f",*a_d.max_cell_volt);
+				//HAL_Delay(500);
+				//printf("broken?\r\n");
 
+			}
+			else if(strcmp(args[1], "MICV") == 0){
+				*a_d.min_cell_volt = atof(args[2]);
+				//printf("value is now %f",*a_d.min_cell_volt);
+			}
+			else if(strcmp(args[1], "MAOV") == 0){
+				*a_d.max_sys_volt = atof(args[2]);
+				//printf("value is now %f",*a_d.max_sys_volt);
+			}
+			else if(strcmp(args[1], "MIOV") == 0){
+				*a_d.min_sys_volt = atof(args[2]);
+				//printf("value is now %f",*a_d.min_sys_volt);
+			}
+			else if(strcmp(args[1], "MASOC") == 0){
+				*a_d.max_soc = atoi(args[2]);
+				//printf("value is now %f",*a_d.max_soc);
+			}
+			else if(strcmp(args[1], "MISOC") == 0){
+				*a_d.min_soc = atoi(args[2]);
+				//printf("value is now %f",*a_d.min_soc);
+			}
+			else if(strcmp(args[1], "SPIN") == 0){
+				if(0<atoi(args[2])&&atoi(args[2])<18){
+					*a_d.s_pin = atoi(args[2]);
+				}
+				printf("value is now %d\r\n",*a_d.s_pin);
+			}
+			else{
+				printf("Incorrect ARG 1 Input\r\n");
+			}
+		}
+	}
+	else{
+		printf("Incorrect number of ARGS should be 2");
+	}
 }
 
 void chg_mode(uint8_t nargs, char **args){
@@ -274,20 +333,22 @@ void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs ca
     *a_d.v_avg = volt_avg;
 }
 
-void coll_cell_volt(uint8_t nargs, char **args){
+//(uint8_t nargs, char **args) is causing everything to break... no clue why
+void coll_cell_volt(void){//uint8_t nargs, char **args){
 	wakeup_sleep(TOTAL_IC);
+	//HAL_Delay(500);
 	LTC6813_adcv(ADC_CONVERSION_MODE,ADC_DCP,CELL_CH_TO_CONVERT);
 	conv_time = LTC6813_pollAdc();
-	print_conv_time(conv_time);  //gotta fix this whole part
+	//print_conv_time(conv_time);  //gotta fix this whole part
 
     wakeup_sleep(TOTAL_IC);
     error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d.BMS_IC); // Set to read back all cell voltage registers
     check_error(error);
-    print_cells(DATALOG_DISABLED);
+    //print_cells(DATALOG_DISABLED);
 }
 
-void cb_test(uint8_t nargs, char **args){
-	if(nargs == 0){
+void cb_test(void){//uint8_t nargs, char **args){
+	/*if(nargs == 0){
 	    s_pin_read = *a_d.s_pin;
 	}
 	else if(nargs == 1){
@@ -295,7 +356,8 @@ void cb_test(uint8_t nargs, char **args){
 	}
 	else{
 		printf("too many arguments\r\n");
-	}
+	}*/
+	s_pin_read = *a_d.s_pin;
     //s_pin_read = select_s_pin();
     //s_pin_read = 4;
     wakeup_sleep(TOTAL_IC);
@@ -340,7 +402,7 @@ void bal_all(uint8_t nargs, char **args){
 	//was balancing stopped? 0 yes 1 no
 	uint8_t stp = 0;
 	printf("Starting Balancing\r\n");
-	coll_cell_volt(0,NULL);
+	coll_cell_volt();
 	volt_calc(0,NULL);
 	printf("vmin: %d\r\n",*a_d.v_min);
 	coll_unbalanced_cells();
@@ -349,29 +411,36 @@ void bal_all(uint8_t nargs, char **args){
 			//turns on balancing for all pins above threshold
 			for(int i = 0; i<*a_d.tap;i++){
 				*a_d.s_pin = *a_d.cvnb[i];
-				cb_test(0,NULL);
+				printf("sPIN: %d\r\n",*a_d.s_pin);
+				cb_test();
 			}
+			HAL_Delay(1000);
 			stp = 1;
 		}
 		old_tap = *a_d.tap;
 		coll_unbalanced_cells();
+		print_cells(DATALOG_DISABLED);
+
 		if(old_tap > *a_d.tap){
 			stop_balance(0,NULL);
 			printf("1 cell finished! %d left",*a_d.tap);
 		}
-		u_sleep(15000);//sleeps so other functions can continue
+		u_sleep(1500);//sleeps so other functions can continue
+		//osDelay(50);
 	}
 	printf("Balancing Done\r\n");
-	coll_cell_volt(0,NULL);
+	coll_cell_volt();
 }
 
 void coll_unbalanced_cells(void){
-	coll_cell_volt(0,NULL);
+	coll_cell_volt();
+	print_cells(DATALOG_DISABLED);
 	*a_d.tap = 0;
-	for (int j = 0; j<18; j++){
-		if(a_d.BMS_IC[0].cells.c_codes[j] >= *a_d.v_min+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
+	for (uint8_t j = 0; j<18; j++){
+		if(a_d.BMS_IC[0].cells.c_codes[j] >= (*a_d.v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
 			*a_d.cvnb[*a_d.tap] = j;
 			*a_d.tap += 1;
+			printf("j: %d tap %d, cvnb:%d\r\n",j,*a_d.tap,*a_d.cvnb[*a_d.tap]);
 		}
 	}
 }
@@ -386,6 +455,63 @@ void get_cell_data(uint8_t nargs, char **args){
 			\r\nVolt Min:    %.04f\
 			\r\nVolt Max:    %.04f\
 			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,*a_d.v_min*.0001,*a_d.v_max*.0001,*a_d.v_avg*.0001);
+}
+
+void fan_control(uint8_t nargs, char **args){
+	int32_t dutyCycle = 0;
+	if(nargs == 1){
+		if(strcmp(args[1], "off") == 0){
+			dutyCycle=0;
+            TIM1->CCR1 = dutyCycle;
+            TIM1->CCR2 = dutyCycle;
+            TIM1->CCR3 = dutyCycle;
+            TIM1->CCR4 = dutyCycle;
+            TIM3->CCR1 = dutyCycle;
+			TIM3->CCR2 = dutyCycle;
+			TIM3->CCR3 = dutyCycle;
+			TIM3->CCR4 = dutyCycle;
+			TIM4->CCR1 = dutyCycle;
+			TIM4->CCR2 = dutyCycle;
+			TIM4->CCR3 = dutyCycle;
+			TIM4->CCR4 = dutyCycle;
+		}
+		else if(strcmp(args[1], "half") == 0){
+			dutyCycle=65535/2;
+            TIM1->CCR1 = dutyCycle;
+            TIM1->CCR2 = dutyCycle;
+            TIM1->CCR3 = dutyCycle;
+            TIM1->CCR4 = dutyCycle;
+            TIM3->CCR1 = dutyCycle;
+			TIM3->CCR2 = dutyCycle;
+			TIM3->CCR3 = dutyCycle;
+			TIM3->CCR4 = dutyCycle;
+			TIM4->CCR1 = dutyCycle;
+			TIM4->CCR2 = dutyCycle;
+			TIM4->CCR3 = dutyCycle;
+			TIM4->CCR4 = dutyCycle;
+		}
+		else if(strcmp(args[1], "max") == 0){
+			dutyCycle=65535;
+            TIM1->CCR1 = dutyCycle;
+            TIM1->CCR2 = dutyCycle;
+            TIM1->CCR3 = dutyCycle;
+            TIM1->CCR4 = dutyCycle;
+            TIM3->CCR1 = dutyCycle;
+			TIM3->CCR2 = dutyCycle;
+			TIM3->CCR3 = dutyCycle;
+			TIM3->CCR4 = dutyCycle;
+			TIM4->CCR1 = dutyCycle;
+			TIM4->CCR2 = dutyCycle;
+			TIM4->CCR3 = dutyCycle;
+			TIM4->CCR4 = dutyCycle;
+		}
+		else{
+			printf("Incorrect ARG 1 Input\r\n");
+		}
+	}
+	else{
+		printf("Incorrect number of ARGS should be 1");
+	}
 }
 
 void can_test(uint8_t nargs, char **args){
@@ -461,39 +587,15 @@ void dac_test(uint8_t nargs, char **args){
 }
 
 void charging_mode(uint8_t nargs, char **args){//activated by GPIO Signal going high from external source(interrupt)
-	while(mode_flag==CHARGING){
-		//check if charge current limit >0
-		if(CCL>0){
-			//ADC of hall effect-at pin PC1
-			if(hall_current>=CCL+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
-
-			}
-			else{
-				//allow charging to continue - repeats the loop
-			}
-		}
-		else{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
-		}
-	}
+	*a_d.mode = 0;
 }
 
 void discharge_mode(uint8_t nargs, char **args){//default mode ~when GPIO Signal is low
-	while(mode_flag==DISCHARGING){
-		//check if discharge current limit >0
-		if(DCL>0){
-			if(hall_current < DCL+2){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
-			}
-			else{
+	*a_d.mode = 1;
+}
 
-			}
-		}
-		else{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
-		}
-	}
+void balancing_mode(){
+	*a_d.mode = 2;
 }
 
 /*!******************************************************************************

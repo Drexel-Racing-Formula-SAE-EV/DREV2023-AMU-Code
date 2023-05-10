@@ -26,8 +26,8 @@
 #define CSB12_RESET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET);
 #define CSB12_SET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET);
 //SPI2_CS_2
-#define CSB14_RESET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
-#define CSB14_SET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);
+#define CSE4_RESET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_RESET);
+#define CSE4_SET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_SET);
 //SPI3_CS_1
 #define CSB0_RESET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 #define CSB0_SET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
@@ -82,7 +82,7 @@
 #define COUNTOF(__BUFFER__) (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
 #define ARGS_COUNT_MAX 8
 
-#define MSG_LEN 128
+#define MSG_LEN 256//default 128
 
 #define TOTAL_IC 1//should be 5
 
@@ -196,18 +196,24 @@ typedef struct
 	//sets the discharge pin
 	uint8_t *s_pin;
 	//cell voltage not balanced/too high array[18]
-	uint8_t **cvnb;
+	uint8_t **cvnb[18];
 	//track cvnb position for marking unbalanced cells
 	uint8_t *tap;
 
 	//USER PARAMETERS
-	uint8_t *max_curr;
-	uint8_t *max_cell_volt;
-	uint8_t *min_cell_volt;
-	uint8_t *max_sys_volt;
-	uint8_t *min_sys_volt;
+	float *max_curr;
+	float *max_cell_volt;
+	float *min_cell_volt;
+	float *max_sys_volt;
+	float *min_sys_volt;
 	uint8_t *max_soc;
 	uint8_t *min_soc;
+
+	uint8_t *VDisp;
+
+	uint8_t *mode;
+
+	int *hall_current;
 
 } app_data;
 

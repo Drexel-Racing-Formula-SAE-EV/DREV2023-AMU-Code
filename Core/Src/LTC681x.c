@@ -2313,7 +2313,7 @@ void init_app_data_681x(app_data *app_data_init)
 	{
 	  blank_data[i]=0xFF;
 	}
-	if(a_d.debug==1){
+	if(*a_d.debug==1){
 		printf("\r\nDebugging init_app_data_681x\r\n");
 		uint8_t data[3],sent[3];
 		sent[0]=0;

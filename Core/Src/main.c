@@ -76,21 +76,56 @@ osThreadId_t TempTaskHandle;
 const osThreadAttr_t TempTask_attributes = {
   .name = "TempTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityAboveNormal7,
+  .priority = (osPriority_t) osPriorityAboveNormal4,
 };
 /* Definitions for V_Monitor */
 osThreadId_t V_MonitorHandle;
 const osThreadAttr_t V_Monitor_attributes = {
   .name = "V_Monitor",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityRealtime,
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal6,
 };
 /* Definitions for CLI */
 osThreadId_t CLIHandle;
 const osThreadAttr_t CLI_attributes = {
   .name = "CLI",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityRealtime,
+};
+/* Definitions for Disp_V */
+osThreadId_t Disp_VHandle;
+const osThreadAttr_t Disp_V_attributes = {
+  .name = "Disp_V",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityRealtime1,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for Charge */
+osThreadId_t ChargeHandle;
+const osThreadAttr_t Charge_attributes = {
+  .name = "Charge",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for Discharge */
+osThreadId_t DischargeHandle;
+const osThreadAttr_t Discharge_attributes = {
+  .name = "Discharge",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for Balance */
+osThreadId_t BalanceHandle;
+const osThreadAttr_t Balance_attributes = {
+  .name = "Balance",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for HAL_CURR_COLL */
+osThreadId_t HAL_CURR_COLLHandle;
+const osThreadAttr_t HAL_CURR_COLL_attributes = {
+  .name = "HAL_CURR_COLL",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for uart_mutex */
 osMutexId_t uart_mutexHandle;
@@ -161,13 +196,16 @@ uint8_t s_pin = 0;
 uint8_t cvnb[18];
 uint8_t tap = 0;
 //SET DEFAULT VALUES
-uint8_t max_curr=0;
-uint8_t max_cell_volt=0;
-uint8_t min_cell_volt=0;
-uint8_t max_sys_volt=0;
-uint8_t min_sys_volt=0;
+float max_curr=0;
+float max_cell_volt=0;
+float min_cell_volt=0;
+float max_sys_volt=0;
+float min_sys_volt=0;
 uint8_t max_soc=0;
 uint8_t min_soc=0;
+uint8_t VDisp = 0;
+uint8_t mode = 0;
+int hall_current = 0;
 
 DATALOG_DISABLED;
 //declare app_data
@@ -193,6 +231,11 @@ static void MX_TIM9_Init(void);
 void Start_Temp_Mon(void *argument);
 void Start_V_Mon(void *argument);
 void CLI_START(void *argument);
+void Start_V_Display(void *argument);
+void Start_Charging(void *argument);
+void Start_Discharging(void *argument);
+void Start_Balancing(void *argument);
+void Start_CURR_COLL(void *argument);
 
 /* USER CODE BEGIN PFP */
 PUTCHAR_PROTOTYPE
@@ -279,7 +322,7 @@ int main(void)
   a_d.Duty = &Duty;
   a_d.stop_flag = &stop_flag;
   a_d.s_pin = &s_pin;
-  a_d.cvnb = &cvnb;
+  *a_d.cvnb = &cvnb;
   a_d.tap = &tap;
   a_d.max_curr = &max_curr;
   a_d.max_cell_volt = &max_cell_volt;
@@ -288,6 +331,9 @@ int main(void)
   a_d.min_sys_volt = &min_sys_volt;
   a_d.max_soc = &max_soc;
   a_d.min_soc = &min_soc;
+  a_d.VDisp = &VDisp;
+  a_d.mode = &mode;
+  a_d.hall_current = &hall_current;
   init_appdata(&a_d);
 
   printf("LETSS GOOOOOOO\r\n");
@@ -354,6 +400,21 @@ int main(void)
 
   /* creation of CLI */
   CLIHandle = osThreadNew(CLI_START, NULL, &CLI_attributes);
+
+  /* creation of Disp_V */
+  Disp_VHandle = osThreadNew(Start_V_Display, NULL, &Disp_V_attributes);
+
+  /* creation of Charge */
+  ChargeHandle = osThreadNew(Start_Charging, NULL, &Charge_attributes);
+
+  /* creation of Discharge */
+  DischargeHandle = osThreadNew(Start_Discharging, NULL, &Discharge_attributes);
+
+  /* creation of Balance */
+  BalanceHandle = osThreadNew(Start_Balancing, NULL, &Balance_attributes);
+
+  /* creation of HAL_CURR_COLL */
+  HAL_CURR_COLLHandle = osThreadNew(Start_CURR_COLL, NULL, &HAL_CURR_COLL_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1149,11 +1210,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     HAL_UART_Transmit(&huart2, UART2_rxBuffer, 1, 100);
     HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, 1);
-	 if(a_d.stop_flag==1){
-		a_d.stop_flag=0;
+	 if(*a_d.stop_flag==1){
+		*a_d.stop_flag=0;
 	 }
 	 else{
-		a_d.stop_flag=1;
+		*a_d.stop_flag=1;
 	 }
 }
 
@@ -1161,7 +1222,7 @@ void init_appdata(app_data *app_data_init)
 {
 	a_d = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files
 
-	if(a_d.debug==1){
+	if(*a_d.debug==1){
 		printf("\r\nDebugging init_appdata(main)\r\n");
 		int data[3],sent[3];
 		sent[0]=0;
@@ -1214,8 +1275,8 @@ void Start_V_Mon(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  //printf("boogers\r\n");
-    osDelay(1200);
+	  coll_cell_volt();
+	  osDelay(1000);
   }
   /* USER CODE END Start_V_Mon */
 }
@@ -1248,10 +1309,146 @@ void CLI_START(void *argument)
 
         cli_handle_command(new_cmd.COMMAND);
         cli_msg_pending = 0;
-
+        //osDelay(100);
     }
   }
   /* USER CODE END CLI_START */
+}
+
+/* USER CODE BEGIN Header_Start_V_Display */
+/**
+* @brief Function implementing the Disp_V thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Start_V_Display */
+void Start_V_Display(void *argument)
+{
+  /* USER CODE BEGIN Start_V_Display */
+  /* Infinite loop */
+  for(;;)
+  {
+	  //printf("boogers\r\n");
+	  if(*a_d.VDisp == 1){
+		  print_cells(DATALOG_DISABLED);
+		  osDelay(1000);
+	  }
+	  osDelay(100);
+  }
+  /* USER CODE END Start_V_Display */
+}
+
+/* USER CODE BEGIN Header_Start_Charging */
+/**
+* @brief Function implementing the Charge thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Start_Charging */
+void Start_Charging(void *argument)
+{
+  /* USER CODE BEGIN Start_Charging */
+  /* Infinite loop */
+  for(;;)
+  {
+	if(*a_d.mode==0){
+		if(*a_d.max_curr>0){
+			//ADC of hall effect-at pin PC1
+			if(*a_d.hall_current>=*a_d.max_curr+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
+
+			}
+			else{
+				//allow charging to continue - repeats the loop
+			}
+		}
+		else{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
+		}
+	}
+    osDelay(1000);
+  }
+  /* USER CODE END Start_Charging */
+}
+
+/* USER CODE BEGIN Header_Start_Discharging */
+/**
+* @brief Function implementing the Discharge thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Start_Discharging */
+void Start_Discharging(void *argument)
+{
+  /* USER CODE BEGIN Start_Discharging */
+  /* Infinite loop */
+  for(;;)
+  {
+	if(*a_d.mode==1){
+		if(*a_d.max_curr>0){
+			if(*a_d.hall_current < *a_d.max_curr+1){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+			}
+			else{
+
+			}
+		}
+		else{
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+		}
+	}
+    osDelay(1000);
+  }
+  /* USER CODE END Start_Discharging */
+}
+
+/* USER CODE BEGIN Header_Start_Balancing */
+/**
+* @brief Function implementing the Balance thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Start_Balancing */
+void Start_Balancing(void *argument)
+{
+  /* USER CODE BEGIN Start_Balancing */
+  /* Infinite loop */
+  for(;;)
+  {
+	  if(*a_d.mode ==2){
+
+	  }
+    osDelay(1000);
+  }
+  /* USER CODE END Start_Balancing */
+}
+
+/* USER CODE BEGIN Header_Start_CURR_COLL */
+/**
+* @brief Function implementing the HAL_CURR_COLL thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Start_CURR_COLL */
+void Start_CURR_COLL(void *argument)
+{
+  /* USER CODE BEGIN Start_CURR_COLL */
+	char spi_rx_buffer[4]={0};
+  /* Infinite loop */
+  for(;;)
+  {
+	  while(0){
+		  CSE4_RESET
+		  u_sleep(3);
+		  HAL_SPI_Receive(a_d.hspi1, (uint8_t *) spi_rx_buffer,2,100);
+		  u_sleep(3);
+		  CSE4_SET
+		  printf("hal lvl:%.02x,%.02x",spi_rx_buffer[0],spi_rx_buffer[1]);
+		  *a_d.hall_current = spi_rx_buffer[0]||spi_rx_buffer[1]>>8;
+	  }
+	  osDelay(1);
+  }
+  /* USER CODE END Start_CURR_COLL */
 }
 
 /**
