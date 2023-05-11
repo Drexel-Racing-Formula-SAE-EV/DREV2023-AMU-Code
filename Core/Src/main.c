@@ -89,7 +89,7 @@ const osThreadAttr_t V_Monitor_attributes = {
 osThreadId_t CLIHandle;
 const osThreadAttr_t CLI_attributes = {
   .name = "CLI",
-  .stack_size = 512 * 4,
+  .stack_size = 1028 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for Disp_V */
@@ -185,27 +185,27 @@ uint8_t tx_buf[TXBUF_SIZE];
 uint8_t command_buf[RXBUF_SIZE];
 uint8_t cli_msg_pending;
 
-uint8_t debugg = DEBUGG;
-uint16_t v_max = 0;
-uint16_t v_min = 0;
-uint16_t v_avg = 0;
-uint32_t Freq = 0;
-float Duty = 0;
-uint8_t stop_flag = 0;
-uint8_t s_pin = 0;
-uint8_t cvnb[18];
-uint8_t tap = 0;
+volatile uint8_t debugg = DEBUGG;
+volatile uint16_t v_max = 0;
+volatile uint16_t v_min = 0;
+volatile uint16_t v_avg = 0;
+volatile uint32_t Freq = 0;
+volatile float Duty = 0;
+volatile uint8_t stop_flag = 0;
+volatile uint8_t s_pin = 0;
+volatile uint8_t cvnb[18];
+volatile uint8_t tap = 0;
 //SET DEFAULT VALUES
-float max_curr=0;
-float max_cell_volt=0;
-float min_cell_volt=0;
-float max_sys_volt=0;
-float min_sys_volt=0;
-uint8_t max_soc=0;
-uint8_t min_soc=0;
-uint8_t VDisp = 0;
-uint8_t mode = 0;
-int hall_current = 0;
+volatile float max_curr=0;
+volatile float max_cell_volt=0;
+volatile float min_cell_volt=0;
+volatile float max_sys_volt=0;
+volatile float min_sys_volt=0;
+volatile uint8_t max_soc=0;
+volatile uint8_t min_soc=0;
+volatile uint8_t VDisp = 0;
+volatile uint8_t mode = 0;
+volatile int hall_current = 0;
 
 DATALOG_DISABLED;
 //declare app_data
@@ -392,14 +392,15 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
+  /* creation of CLI */
+    CLIHandle = osThreadNew(CLI_START, NULL, &CLI_attributes);
   /* creation of TempTask */
   TempTaskHandle = osThreadNew(Start_Temp_Mon, NULL, &TempTask_attributes);
 
   /* creation of V_Monitor */
   V_MonitorHandle = osThreadNew(Start_V_Mon, NULL, &V_Monitor_attributes);
 
-  /* creation of CLI */
-  CLIHandle = osThreadNew(CLI_START, NULL, &CLI_attributes);
+
 
   /* creation of Disp_V */
   Disp_VHandle = osThreadNew(Start_V_Display, NULL, &Disp_V_attributes);
@@ -1325,15 +1326,21 @@ void CLI_START(void *argument)
 void Start_V_Display(void *argument)
 {
   /* USER CODE BEGIN Start_V_Display */
+	int i = 0;
   /* Infinite loop */
   for(;;)
   {
 	  //printf("boogers\r\n");
 	  if(*a_d.VDisp == 1){
 		  print_cells(DATALOG_DISABLED);
-		  osDelay(1000);
+		  //osDelay(2000);
+		  /*i++;
+		  if(i>=3){
+			  i=0;
+			  *a_d.VDisp = 0;
+		  }*/
 	  }
-	  osDelay(100);
+	  osDelay(1000);
   }
   /* USER CODE END Start_V_Display */
 }

@@ -203,7 +203,7 @@ void run_test(uint8_t nargs, char **args){
 }
 
 void display(uint8_t nargs, char **args){
-	HAL_Delay(50);//consider changing hal delay to os delay
+	//HAL_Delay(50);//consider changing hal delay to os delay
 	if(nargs == 1){
 		if(strcmp(args[1], "overall") == 0){
 //Displays parameters of the battery: max temp of each segment, overall voltage, SoC, instantaneous current, state of AIR control, BMS safe / unsafe, calculated isolation from IMD
@@ -215,8 +215,9 @@ void display(uint8_t nargs, char **args){
 		}
 		else if(strcmp(args[1], "volt") == 0){
 //Display array of all voltages and overall voltage, updating 1/s
-			*a_d.VDisp = !*a_d.VDisp;
+			*a_d.VDisp = 1;
 			printf("VDISP = %d\r\n",*a_d.VDisp);
+			return;
 		}
 		else{
 			printf("Incorrect ARG\r\n");
@@ -419,7 +420,7 @@ void bal_all(uint8_t nargs, char **args){
 		}
 		old_tap = *a_d.tap;
 		coll_unbalanced_cells();
-		print_cells(DATALOG_DISABLED);
+		//print_cells(DATALOG_DISABLED);
 
 		if(old_tap > *a_d.tap){
 			stop_balance(0,NULL);
@@ -434,7 +435,7 @@ void bal_all(uint8_t nargs, char **args){
 
 void coll_unbalanced_cells(void){
 	coll_cell_volt();
-	print_cells(DATALOG_DISABLED);
+	//print_cells(DATALOG_DISABLED);
 	*a_d.tap = 0;
 	for (uint8_t j = 0; j<18; j++){
 		if(a_d.BMS_IC[0].cells.c_codes[j] >= (*a_d.v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
