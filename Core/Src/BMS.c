@@ -13,7 +13,7 @@
 #define CHARGING 1
 #define DISCHARGING 2
 
-static app_data a_d;
+static app_data *a_d;
 
 /********************************************************************
  ADC Command Configurations. See LTC681x.h for options(Reference Linduino LTC6813)
@@ -34,15 +34,6 @@ int8_t error = 0;
 uint32_t conv_time = 0;
 int8_t s_pin_read=0;
 
-//int mode_flag = 0;//flag for knowing when to stay in a mode and when to exit safely
-//const int vbat_max = 4.2;//set to the max voltage cars cell can charge to immediately ceases charging once exceeded
-//const int vbat_mix = 3.2;//minimum voltage cars cells can be upon hitting immediately shutdown
-//const int current_max = 2;//max current allowed for charging system
-//int CCL = 2; // current charge limit - initially the max current a cell can handle
-//int DCL = 2; // discharge current limit - initially the max current a cell can handle
-//int hall_current = 0;
-
-
 void spi_loopback(uint8_t nargs, char **args){
 	printf("\r\n spi loopback\r\n;");
 	char spi_tx_buffer[200]={0};
@@ -51,9 +42,9 @@ void spi_loopback(uint8_t nargs, char **args){
 	for(int i = 0; i<200; i++){
 	  spi_tx_buffer[i] = i;
 	}
-	while(*a_d.stop_flag){
+	while(a_d->stop_flag){
 	   	  LTC_6813_CS_RESET
-	   	  HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+	   	  HAL_SPI_TransmitReceive(a_d->hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
 	   	  LTC_6813_CS_SET
 	   	  for(int i = 0; i<200; i++){
 	   		  printf("%d ",spi_tx_buffer[i]);
@@ -73,8 +64,8 @@ void spi_infinite_send(uint8_t nargs, char **args){
 	printf("\r\n entering test2\r\n;");
 	  LTC_6813_CS_RESET
 	  uint8_t blah[1] = {0x02};
-	  while(*a_d.stop_flag){
-			HAL_SPI_Transmit(a_d.hspi1, blah,1,100);
+	  while(a_d->stop_flag){
+			HAL_SPI_Transmit(a_d->hspi1, blah,1,100);
 			//for(uint8_t i = 0; i<tx_len+rx_len; i++){
 			  //	printf("%x\r\n",rx_data[i]);
 			//  }
@@ -91,14 +82,14 @@ void test1(uint8_t nargs, char **args){
 	  char spi_tx_buffer[200];
 	  char spi_rx_buffer[200];
 	  uint16_t spi_transfer_size = 200;
-	  while (a_d.stop_flag)//stop_flag)
+	  while (a_d->stop_flag)//stop_flag)
 	  {
 		  for(int i = 0; i<200; i++){
 			  spi_tx_buffer[i] = i;
 		  }
 	         //printf("Hello World\n\r");//wont see until uart to usb recieved
 	   	  LTC_6813_CS_RESET
-	   	  HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
+	   	  HAL_SPI_TransmitReceive(a_d->hspi1, (uint8_t *) spi_tx_buffer,(uint8_t *) spi_rx_buffer,spi_transfer_size,100);
 	   	//spi_write_read(spi_tx_buffer,200,spi_rx_buffer,200);
 	   	  LTC_6813_CS_SET
 	   	  for(int i = 0; i<200; i++){
@@ -118,22 +109,22 @@ void spi_comm_test(uint8_t nargs, char **args){
 	      for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
 	      {
 	        //Communication control bits and communication data bytes. Refer to the data sheet.
-	        a_d.BMS_IC[current_ic].com.tx_data[0]= 0x81; // Icom CSBM Low(8) + data D0 (0x11)
-	        a_d.BMS_IC[current_ic].com.tx_data[1]= 0x10; // Fcom CSBM Low(0)
-	        a_d.BMS_IC[current_ic].com.tx_data[2]= 0xA2; // Icom CSBM Falling Edge (A) + data D1 (0x25)
-	        a_d.BMS_IC[current_ic].com.tx_data[3]= 0x50; // Fcom CSBM Low(0)
-	        a_d.BMS_IC[current_ic].com.tx_data[4]= 0xA1; // Icom CSBM Falling Edge (A) + data D2 (0x17)
-	        a_d.BMS_IC[current_ic].com.tx_data[5]= 0x79; // Fcom CSBM High(9)
+	        a_d->BMS_IC[current_ic].com.tx_data[0]= 0x81; // Icom CSBM Low(8) + data D0 (0x11)
+	        a_d->BMS_IC[current_ic].com.tx_data[1]= 0x10; // Fcom CSBM Low(0)
+	        a_d->BMS_IC[current_ic].com.tx_data[2]= 0xA2; // Icom CSBM Falling Edge (A) + data D1 (0x25)
+	        a_d->BMS_IC[current_ic].com.tx_data[3]= 0x50; // Fcom CSBM Low(0)
+	        a_d->BMS_IC[current_ic].com.tx_data[4]= 0xA1; // Icom CSBM Falling Edge (A) + data D2 (0x17)
+	        a_d->BMS_IC[current_ic].com.tx_data[5]= 0x79; // Fcom CSBM High(9)
 	      }
 	      wakeup_sleep(TOTAL_IC);
-	      LTC6813_wrcomm(TOTAL_IC,a_d.BMS_IC);
+	      LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC);
 	      //print_wrcomm();
 
 	      wakeup_idle(TOTAL_IC);
 	      LTC6813_stcomm(3);
 
 	      wakeup_idle(TOTAL_IC);
-	      error = LTC6813_rdcomm(TOTAL_IC,a_d.BMS_IC);
+	      error = LTC6813_rdcomm(TOTAL_IC,a_d->BMS_IC);
 	      check_error(error);
 	      print_wrcomm();
 	      print_rxcomm();
@@ -162,7 +153,7 @@ void test4(uint8_t nargs, char **args){
 		  //printf("Cell Voltages:\r\n");
 
 	      wakeup_sleep(TOTAL_IC);
-	      error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d.BMS_IC); // Set to read back all cell voltage registers
+	      error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all cell voltage registers
 	      check_error(error);
 	      print_cells(DATALOG_DISABLED);
 	      HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_SET);
@@ -215,8 +206,14 @@ void display(uint8_t nargs, char **args){
 		}
 		else if(strcmp(args[1], "volt") == 0){
 //Display array of all voltages and overall voltage, updating 1/s
-			*a_d.VDisp = 1;
-			printf("VDISP = %d\r\n",*a_d.VDisp);
+			//a_d->VDisp = 1;
+			//vmon();
+			for(int i =0;i<3;i++){
+				print_cells(0);
+				osDelay(1000);
+			}
+			//HAL_Delay(1000);
+			//printf("VDISP = %d\r\n",a_d->VDisp);
 			return;
 		}
 		else{
@@ -235,46 +232,46 @@ void edit_params(uint8_t nargs, char **args){
 		}
 		else{
 			if(strcmp(args[1], "MC") == 0){
-				*a_d.max_curr = atoi(args[2]);
+				a_d->max_curr = atoi(args[2]);
 				//HAL_Delay(5000);
 				//print statement without delay = death??
-				//printf("value is now %f",*a_d.max_curr);
+				//printf("value is now %f",*a_d->max_curr);
 				//printf("broken?\r\n");
 			}
 			else if(strcmp(args[1], "MACV") == 0){
 				if(0<atoi(args[2])&&atoi(args[2])<6.6){
-					*a_d.max_cell_volt = atoi(args[2]);
+					a_d->max_cell_volt = atoi(args[2]);
 				}
-				//printf("value is now %f",*a_d.max_cell_volt);
+				//printf("value is now %f",*a_d->max_cell_volt);
 				//HAL_Delay(500);
 				//printf("broken?\r\n");
 
 			}
 			else if(strcmp(args[1], "MICV") == 0){
-				*a_d.min_cell_volt = atof(args[2]);
-				//printf("value is now %f",*a_d.min_cell_volt);
+				a_d->min_cell_volt = atof(args[2]);
+				//printf("value is now %f",*a_d->min_cell_volt);
 			}
 			else if(strcmp(args[1], "MAOV") == 0){
-				*a_d.max_sys_volt = atof(args[2]);
-				//printf("value is now %f",*a_d.max_sys_volt);
+				a_d->max_sys_volt = atof(args[2]);
+				//printf("value is now %f",*a_d->max_sys_volt);
 			}
 			else if(strcmp(args[1], "MIOV") == 0){
-				*a_d.min_sys_volt = atof(args[2]);
-				//printf("value is now %f",*a_d.min_sys_volt);
+				a_d->min_sys_volt = atof(args[2]);
+				//printf("value is now %f",*a_d->min_sys_volt);
 			}
 			else if(strcmp(args[1], "MASOC") == 0){
-				*a_d.max_soc = atoi(args[2]);
-				//printf("value is now %f",*a_d.max_soc);
+				a_d->max_soc = atoi(args[2]);
+				//printf("value is now %f",*a_d->max_soc);
 			}
 			else if(strcmp(args[1], "MISOC") == 0){
-				*a_d.min_soc = atoi(args[2]);
-				//printf("value is now %f",*a_d.min_soc);
+				a_d->min_soc = atoi(args[2]);
+				//printf("value is now %f",*a_d->min_soc);
 			}
 			else if(strcmp(args[1], "SPIN") == 0){
 				if(0<atoi(args[2])&&atoi(args[2])<18){
-					*a_d.s_pin = atoi(args[2]);
+					a_d->s_pin = atoi(args[2]);
 				}
-				printf("value is now %d\r\n",*a_d.s_pin);
+				printf("value is now %d\r\n",a_d->s_pin);
 			}
 			else{
 				printf("Incorrect ARG 1 Input\r\n");
@@ -298,9 +295,15 @@ void chg_mode(uint8_t nargs, char **args){
 			//mode = balance;
 			bal_all(0,NULL);
 		}
+		else if(strcmp(args[1], "no") == 0){
+			a_d->mode = 127;
+		}
+		else{
+			printf("Incorrect Arg\r\n");
+		}
 	}
 	else{
-		printf("too many arguments\r\n");
+		printf("too few/many arguments\r\n");
 	}
 }
 
@@ -309,18 +312,18 @@ void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs ca
 	uint32_t volt_total=0;
 	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
 	  {
-	    for (int i=0; i<a_d.BMS_IC[0].ic_reg.cell_channels; i++){
+	    for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++){
 	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);
-	    	if(a_d.BMS_IC[current_ic].cells.c_codes[i]==65535||a_d.BMS_IC[current_ic].cells.c_codes[i]==0);
-	    	else if(volt_min>a_d.BMS_IC[current_ic].cells.c_codes[i]){
-	    		volt_min = a_d.BMS_IC[current_ic].cells.c_codes[i];
+	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]==0);
+	    	else if(volt_min>a_d->BMS_IC[current_ic].cells.c_codes[i]){
+	    		volt_min = a_d->BMS_IC[current_ic].cells.c_codes[i];
 	    	}
-	    	if(a_d.BMS_IC[current_ic].cells.c_codes[i]==65535||a_d.BMS_IC[current_ic].cells.c_codes[i]==0);
-	    	else if(volt_max<a_d.BMS_IC[current_ic].cells.c_codes[i]){
-	    		volt_max=a_d.BMS_IC[current_ic].cells.c_codes[i];
+	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]==0);
+	    	else if(volt_max<a_d->BMS_IC[current_ic].cells.c_codes[i]){
+	    		volt_max=a_d->BMS_IC[current_ic].cells.c_codes[i];
 	    	}
-	    	if(a_d.BMS_IC[current_ic].cells.c_codes[i]!=65535&&a_d.BMS_IC[current_ic].cells.c_codes[i]!=0){
-				volt_total += a_d.BMS_IC[current_ic].cells.c_codes[i];
+	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]!=65535&&a_d->BMS_IC[current_ic].cells.c_codes[i]!=0){
+				volt_total += a_d->BMS_IC[current_ic].cells.c_codes[i];
 				total_cells++;
 	    	}
 	    }
@@ -329,9 +332,9 @@ void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs ca
     volt_avg = volt_total/total_cells;
     //printf("volt total %d, volt_avg %d\r\n",volt_total,volt_avg);
     //printf("vmax: %d, vmin %d, vavg, %d\r\n",volt_max,volt_min,volt_avg);
-    *a_d.v_max = volt_max;
-    *a_d.v_min = volt_min;
-    *a_d.v_avg = volt_avg;
+    a_d->v_max = volt_max;
+    a_d->v_min = volt_min;
+    a_d->v_avg = volt_avg;
 }
 
 //(uint8_t nargs, char **args) is causing everything to break... no clue why
@@ -343,14 +346,14 @@ void coll_cell_volt(void){//uint8_t nargs, char **args){
 	//print_conv_time(conv_time);  //gotta fix this whole part
 
     wakeup_sleep(TOTAL_IC);
-    error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d.BMS_IC); // Set to read back all cell voltage registers
+    error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all cell voltage registers
     check_error(error);
-    //print_cells(DATALOG_DISABLED);
+    print_cells(DATALOG_DISABLED);
 }
 
 void cb_test(void){//uint8_t nargs, char **args){
 	/*if(nargs == 0){
-	    s_pin_read = *a_d.s_pin;
+	    s_pin_read = *a_d->s_pin;
 	}
 	else if(nargs == 1){
 		s_pin_read = atoi(args[1]);
@@ -358,19 +361,19 @@ void cb_test(void){//uint8_t nargs, char **args){
 	else{
 		printf("too many arguments\r\n");
 	}*/
-	s_pin_read = *a_d.s_pin;
+	s_pin_read = a_d->s_pin;
     //s_pin_read = select_s_pin();
     //s_pin_read = 4;
     wakeup_sleep(TOTAL_IC);
-    LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d.BMS_IC);
-    LTC6813_wrcfg(TOTAL_IC,a_d.BMS_IC);
-    LTC6813_wrcfgb(TOTAL_IC,a_d.BMS_IC);
+    LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d->BMS_IC);
+    LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
+    LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
     print_wrconfig();
     print_wrconfigb();
     wakeup_idle(TOTAL_IC);
-    error = LTC6813_rdcfg(TOTAL_IC,a_d.BMS_IC);
+    error = LTC6813_rdcfg(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
-    error = LTC6813_rdcfgb(TOTAL_IC,a_d.BMS_IC);
+    error = LTC6813_rdcfgb(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
     print_rxconfig();
     print_rxconfigb();
@@ -378,15 +381,15 @@ void cb_test(void){//uint8_t nargs, char **args){
 
 void stop_balance(uint8_t nargs, char **args){
     wakeup_sleep(TOTAL_IC);
-    LTC6813_clear_discharge(TOTAL_IC,a_d.BMS_IC);
-    LTC6813_wrcfg(TOTAL_IC,a_d.BMS_IC);
-    LTC6813_wrcfgb(TOTAL_IC,a_d.BMS_IC);
+    LTC6813_clear_discharge(TOTAL_IC,a_d->BMS_IC);
+    LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
+    LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
     print_wrconfig();
     print_wrconfigb();
     wakeup_idle(TOTAL_IC);
-    error = LTC6813_rdcfg(TOTAL_IC,a_d.BMS_IC);
+    error = LTC6813_rdcfg(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
-    error = LTC6813_rdcfgb(TOTAL_IC,a_d.BMS_IC);
+    error = LTC6813_rdcfgb(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
     print_rxconfig();
     print_rxconfigb();
@@ -405,26 +408,26 @@ void bal_all(uint8_t nargs, char **args){
 	printf("Starting Balancing\r\n");
 	coll_cell_volt();
 	volt_calc(0,NULL);
-	printf("vmin: %d\r\n",*a_d.v_min);
+	printf("vmin: %d\r\n",a_d->v_min);
 	coll_unbalanced_cells();
-	while(*a_d.tap > 0){
+	while(a_d->tap > 0){
 		if(stp == 0){//if balancing is not active
 			//turns on balancing for all pins above threshold
-			for(int i = 0; i<*a_d.tap;i++){
-				*a_d.s_pin = *a_d.cvnb[i];
-				printf("sPIN: %d\r\n",*a_d.s_pin);
+			for(int i = 0; i<a_d->tap;i++){
+				a_d->s_pin = a_d->cvnb[i];
+				printf("sPIN: %d\r\n",a_d->s_pin);
 				cb_test();
 			}
 			HAL_Delay(1000);
 			stp = 1;
 		}
-		old_tap = *a_d.tap;
+		old_tap = a_d->tap;
 		coll_unbalanced_cells();
 		//print_cells(DATALOG_DISABLED);
 
-		if(old_tap > *a_d.tap){
+		if(old_tap > a_d->tap){
 			stop_balance(0,NULL);
-			printf("1 cell finished! %d left",*a_d.tap);
+			printf("1 cell finished! %d left",a_d->tap);
 		}
 		u_sleep(1500);//sleeps so other functions can continue
 		//osDelay(50);
@@ -436,18 +439,28 @@ void bal_all(uint8_t nargs, char **args){
 void coll_unbalanced_cells(void){
 	coll_cell_volt();
 	//print_cells(DATALOG_DISABLED);
-	*a_d.tap = 0;
+	a_d->tap = 0;
 	for (uint8_t j = 0; j<18; j++){
-		if(a_d.BMS_IC[0].cells.c_codes[j] >= (*a_d.v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
-			*a_d.cvnb[*a_d.tap] = j;
-			*a_d.tap += 1;
-			printf("j: %d tap %d, cvnb:%d\r\n",j,*a_d.tap,*a_d.cvnb[*a_d.tap]);
+		if(a_d->BMS_IC[0].cells.c_codes[j] >= (a_d->v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
+			a_d->cvnb[a_d->tap] = j;
+			a_d->tap += 1;
+			printf("j: %d tap %d, cvnb:%d\r\n",j,a_d->tap,a_d->cvnb[a_d->tap]);
 		}
 	}
 }
 
 void temp_calc(uint8_t nargs, char **args){
+    wakeup_sleep(TOTAL_IC);
+    for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
+    {
+      LTC6813_set_cfgr(current_ic,a_d->BMS_IC,a_d->ltc.REFON,a_d->ltc.ADCOPT,a_d->ltc.GPIOBITS_A,a_d->ltc.DCCBITS_A, a_d->ltc.DCTOBITS, a_d->ltc.UV, a_d->ltc.OV);
+      LTC6813_set_cfgrb(current_ic,a_d->BMS_IC,a_d->ltc.FDRF,a_d->ltc.DTMEN,a_d->ltc.PSBITS,a_d->ltc.GPIOBITS_B,a_d->ltc.DCCBITS_B);
+    }
 
+    LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
+    LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
+    print_wrconfig();
+    print_wrconfigb();
 }
 
 void get_cell_data(uint8_t nargs, char **args){
@@ -455,7 +468,7 @@ void get_cell_data(uint8_t nargs, char **args){
 			\r\nTotal IC:    %d\
 			\r\nVolt Min:    %.04f\
 			\r\nVolt Max:    %.04f\
-			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,*a_d.v_min*.0001,*a_d.v_max*.0001,*a_d.v_avg*.0001);
+			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,a_d->v_min*.0001,a_d->v_max*.0001,a_d->v_avg*.0001);
 }
 
 void fan_control(uint8_t nargs, char **args){
@@ -520,7 +533,7 @@ void can_test(uint8_t nargs, char **args){
 	uint32_t TxMailbox;
 	//uint8_t TxData[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
 	uint8_t TxData[3] = {0x90 ,0xAB, 0x2A};
-    if (HAL_CAN_AddTxMessage(a_d.hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
+    if (HAL_CAN_AddTxMessage(a_d->hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
     {
       /* Transmission request Error */
     	printf("broke\r\n");
@@ -570,15 +583,15 @@ void pwm_out_test(uint8_t nargs, char **args){
 }
 
 void pwm_in_test(uint8_t nargs, char **args){
-	printf("Duty %f Freq %lu\r\n",*a_d.Duty,*a_d.Freq);
+	printf("Duty %f Freq %lu\r\n",a_d->Duty,a_d->Freq);
 }
 
 void dac_test(uint8_t nargs, char **args){
 	uint32_t DAC_OUT[4] = {0, 1241, 2482, 3723};
 	uint8_t i = 0;
 	while(1){
-        HAL_DAC_SetValue(a_d.hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_OUT[i++]);
-        HAL_DAC_SetValue(a_d.hdac, DAC_CHANNEL_2, DAC_ALIGN_12B_R, DAC_OUT[i++]);
+        HAL_DAC_SetValue(a_d->hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, DAC_OUT[i++]);
+        HAL_DAC_SetValue(a_d->hdac, DAC_CHANNEL_2, DAC_ALIGN_12B_R, DAC_OUT[i++]);
         if(i == 4)
         {
             i = 0;
@@ -587,16 +600,20 @@ void dac_test(uint8_t nargs, char **args){
 	}
 }
 
-void charging_mode(uint8_t nargs, char **args){//activated by GPIO Signal going high from external source(interrupt)
-	*a_d.mode = 0;
+void charging_mode(){//activated by GPIO Signal going high from external source(interrupt)
+	a_d->mode = 0;
 }
 
-void discharge_mode(uint8_t nargs, char **args){//default mode ~when GPIO Signal is low
-	*a_d.mode = 1;
+void discharge_mode(){//default mode ~when GPIO Signal is low
+	a_d->mode = 1;
 }
 
 void balancing_mode(){
-	*a_d.mode = 2;
+	a_d->mode = 2;
+}
+
+void vmon(){
+	a_d->VDisp = 1;
 }
 
 /*!******************************************************************************
@@ -618,10 +635,10 @@ void print_wrconfig(void)
       {
         //Serial.print(F(", 0x"));
         //serial_print_hex(BMS_IC[current_ic].config.tx_data[i]);
-        printf(", %.02x",a_d.BMS_IC[current_ic].config.tx_data[i]);
+        printf(", %.02x",a_d->BMS_IC[current_ic].config.tx_data[i]);
       }
       //Serial.print(F(", Calculated PEC: 0x"));
-      cfg_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].config.tx_data[0]);
+      cfg_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].config.tx_data[0]);
       //serial_print_hex((uint8_t)(cfg_pec>>8));
       //Serial.print(F(", 0x"));
       //serial_print_hex((uint8_t)(cfg_pec));
@@ -649,10 +666,10 @@ void print_wrconfigb(void)
       {
         //Serial.print(F(", 0x"));
         //serial_print_hex(BMS_IC[current_ic].configb.tx_data[i]);
-        printf(", %.02x",a_d.BMS_IC[current_ic].config.tx_data[i]);
+        printf(", %.02x",a_d->BMS_IC[current_ic].config.tx_data[i]);
       }
       //Serial.print(F(", Calculated PEC: 0x"));
-      cfg_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].configb.tx_data[0]);
+      cfg_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].configb.tx_data[0]);
       //serial_print_hex((uint8_t)(cfg_pec>>8));
       //Serial.print(F(", 0x"));
       //serial_print_hex((uint8_t)(cfg_pec));
@@ -680,14 +697,14 @@ void print_rxconfig(void)
     {
       //Serial.print(F(", 0x"));
       //serial_print_hex(BMS_IC[current_ic].config.rx_data[i]);
-      printf(", %.02x",a_d.BMS_IC[current_ic].config.rx_data[i]);
+      printf(", %.02x",a_d->BMS_IC[current_ic].config.rx_data[i]);
     }
     //Serial.print(F(", Received PEC: 0x"));
     //serial_print_hex(BMS_IC[current_ic].config.rx_data[6]);
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].config.rx_data[7]);
     //Serial.println("\n");
-    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].config.rx_data[6],a_d.BMS_IC[current_ic].config.rx_data[7]);
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].config.rx_data[6],a_d->BMS_IC[current_ic].config.rx_data[7]);
   }
 }
 
@@ -709,14 +726,14 @@ void print_rxconfigb(void)
     {
       //Serial.print(F(", 0x"));
       //serial_print_hex(BMS_IC[current_ic].configb.rx_data[i]);
-      printf(", %.02x",a_d.BMS_IC[current_ic].configb.rx_data[i]);
+      printf(", %.02x",a_d->BMS_IC[current_ic].configb.rx_data[i]);
     }
     //Serial.print(F(", Received PEC: 0x"));
     //serial_print_hex(BMS_IC[current_ic].configb.rx_data[6]);
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].configb.rx_data[7]);
     //Serial.println("\n");
-    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].configb.rx_data[6],a_d.BMS_IC[current_ic].configb.rx_data[7]);
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].configb.rx_data[6],a_d->BMS_IC[current_ic].configb.rx_data[7]);
   }
 }
 
@@ -730,14 +747,14 @@ void print_cells(uint8_t datalog_en)
       //Serial.print(current_ic+1,DEC);
       //Serial.print(", ");
       printf(" IC %d,",current_ic+1);
-      for (int i=0; i<a_d.BMS_IC[0].ic_reg.cell_channels; i++)
+      for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++)
       {
         //Serial.print(" C");
         //Serial.print(i+1,DEC);
         //Serial.print(":");
         //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
         //Serial.print(",");
-        printf(" C%d:%.4f,",i+1,a_d.BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+        printf(" C%d:%.4f,",i+1,a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
       }
       //Serial.println();
       printf("\r\n");
@@ -746,16 +763,16 @@ void print_cells(uint8_t datalog_en)
     {
       //Serial.print(" Cells, ");
       printf(" Cells, ");
-      for (int i=0; i<a_d.BMS_IC[0].ic_reg.cell_channels; i++)
+      for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++)
       {
         //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
         //Serial.print(",");
-        printf("%f,",a_d.BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+        printf("%f,",a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
       }
     }
   }
   //Serial.println("\n");
-  printf("\r\n");
+  //printf("\r\n");
 }
 
 /*!****************************************************************************
@@ -778,7 +795,7 @@ void print_aux(uint8_t datalog_en)
         //Serial.print(":");
         //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
         //Serial.print(",");
-        printf(" GPIO-%d:%f,",i+1,a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+        printf(" GPIO-%d:%f,",i+1,a_d->BMS_IC[current_ic].aux.a_codes[i]*0.0001);
       }
 
       for (int i=6; i < 10; i++)
@@ -787,7 +804,7 @@ void print_aux(uint8_t datalog_en)
         //Serial.print(i,DEC);
         //Serial.print(":");
         //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
-        printf(" GPIO-%d:%f,",i+1,a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+        printf(" GPIO-%d:%f,",i+1,a_d->BMS_IC[current_ic].aux.a_codes[i]*0.0001);
       }
 
       //Serial.print(F(" Vref2"));
@@ -798,7 +815,7 @@ void print_aux(uint8_t datalog_en)
       //Serial.print(" OV/UV Flags : 0x");
       //Serial.print((uint8_t)BMS_IC[current_ic].aux.a_codes[11],HEX);
       //Serial.println();
-      printf(" Vref2:%f\r\n OV/UV Flags : %x\r\n",a_d.BMS_IC[current_ic].aux.a_codes[5]*0.0001,(uint8_t)a_d.BMS_IC[current_ic].aux.a_codes[11]);
+      printf(" Vref2:%f\r\n OV/UV Flags : %x\r\n",a_d->BMS_IC[current_ic].aux.a_codes[5]*0.0001,(uint8_t)a_d->BMS_IC[current_ic].aux.a_codes[11]);
     }
     else
     {
@@ -809,7 +826,7 @@ void print_aux(uint8_t datalog_en)
       {
         //Serial.print((uint8_t)BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
         //Serial.print(",");
-        printf("%f,",(uint8_t)a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+        printf("%f,",(uint8_t)a_d->BMS_IC[current_ic].aux.a_codes[i]*0.0001);
       }
     }
   }
@@ -827,7 +844,7 @@ void print_stat(void)
   {
     double itmp;
 
-    itmp = (double)((a_d.BMS_IC[current_ic].stat.stat_codes[1] * (0.0001 / 0.0076)) - 276);   //Internal Die Temperature(°C) = ITMP • (100 µV / 7.6mV)°C - 276°C
+    itmp = (double)((a_d->BMS_IC[current_ic].stat.stat_codes[1] * (0.0001 / 0.0076)) - 276);   //Internal Die Temperature(°C) = ITMP • (100 µV / 7.6mV)°C - 276°C
     /*Serial.print(F(" IC "));
     Serial.print(current_ic+1,DEC);
     Serial.print(F(" SOC:"));
@@ -843,7 +860,7 @@ void print_stat(void)
     Serial.print(F(" VregD:"));
     Serial.print(BMS_IC[current_ic].stat.stat_codes[3]*0.0001,4);
     Serial.println();*/
-    printf(" IC %d SOC:%f, Itemp:%f, VregA:%f, VregD:%f\r\n",current_ic+1,a_d.BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30,itmp,a_d.BMS_IC[current_ic].stat.stat_codes[2]*0.0001,a_d.BMS_IC[current_ic].stat.stat_codes[3]*0.0001);
+    printf(" IC %d SOC:%f, Itemp:%f, VregA:%f, VregD:%f\r\n",current_ic+1,a_d->BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30,itmp,a_d->BMS_IC[current_ic].stat.stat_codes[2]*0.0001,a_d->BMS_IC[current_ic].stat.stat_codes[3]*0.0001);
     //Serial.print(F(" OV/UV Flags:"));
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].stat.flags[0]);
@@ -858,7 +875,7 @@ void print_stat(void)
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].stat.thsd[0]);
     //Serial.println();
-    printf(" OV/UV Flags:, %.02x, %.02x, %.02x\tMux fail flag: %.02x\tTHSD:, %.02x\r\n",a_d.BMS_IC[current_ic].stat.flags[0],a_d.BMS_IC[current_ic].stat.flags[1],a_d.BMS_IC[current_ic].stat.flags[2],a_d.BMS_IC[current_ic].stat.mux_fail[0],a_d.BMS_IC[current_ic].stat.thsd[0]);
+    printf(" OV/UV Flags:, %.02x, %.02x, %.02x\tMux fail flag: %.02x\tTHSD:, %.02x\r\n",a_d->BMS_IC[current_ic].stat.flags[0],a_d->BMS_IC[current_ic].stat.flags[1],a_d->BMS_IC[current_ic].stat.flags[2],a_d->BMS_IC[current_ic].stat.mux_fail[0],a_d->BMS_IC[current_ic].stat.thsd[0]);
   }
   //Serial.println("\n");
   printf("\r\n");
@@ -885,7 +902,7 @@ void print_aux1(uint8_t datalog_en)
         //Serial.print(":");
         //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
         //Serial.print(",");
-        printf(" GPIO-%d:%f,",i+1,a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+        printf(" GPIO-%d:%f,",i+1,a_d->BMS_IC[current_ic].aux.a_codes[i]*0.0001);
       }
     }
     else
@@ -897,7 +914,7 @@ void print_aux1(uint8_t datalog_en)
       {
         //Serial.print(BMS_IC[current_ic].aux.a_codes[i]*0.0001,4);
         //Serial.print(",");
-        printf("%f,",a_d.BMS_IC[current_ic].aux.a_codes[i]*0.0001);
+        printf("%f,",a_d->BMS_IC[current_ic].aux.a_codes[i]*0.0001);
       }
     }
   }
@@ -917,7 +934,7 @@ void print_sumofcells(void)
     //Serial.print(F(" SOC:"));
     //Serial.print(BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30,4);
     //Serial.print(F(","));
-    printf(" IC %d SOC:%f,",current_ic+1,a_d.BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30);
+    printf(" IC %d SOC:%f,",current_ic+1,a_d->BMS_IC[current_ic].stat.stat_codes[0]*0.0001*30);
   }
   //Serial.println("\n");
   printf("\r\n");
@@ -935,7 +952,7 @@ void check_mux_fail(void)
       //Serial.print(" IC ");
       //Serial.println(ic+1,DEC);
       printf(" IC %d,",ic+1);
-      if (a_d.BMS_IC[ic].stat.mux_fail[0] != 0) error++;
+      if (a_d->BMS_IC[ic].stat.mux_fail[0] != 0) error++;
 
       if (error==0) printf("MUX Test: PASS \r\n");//Serial.println(F("Mux Test: PASS \n"));
       else printf("Mux Test: FAIL \r\n");//Serial.println(F("Mux Test: FAIL \n"));
@@ -1007,7 +1024,7 @@ void print_open_wires(void)
 {
   for (int current_ic =0 ; current_ic < TOTAL_IC; current_ic++)
   {
-    if (a_d.BMS_IC[current_ic].system_open_wire == 65535)
+    if (a_d->BMS_IC[current_ic].system_open_wire == 65535)
     {
       //Serial.print("No Opens Detected on IC ");
       //Serial.print(current_ic+1, DEC);
@@ -1020,7 +1037,7 @@ void print_open_wires(void)
       //Serial.print(current_ic + 1,DEC);
       //Serial.print(F(" Channel: "));
       //Serial.println(BMS_IC[current_ic].system_open_wire);
-      printf("There is an open wire on IC %d Channel: %ld\r\n",current_ic+1,a_d.BMS_IC[current_ic].system_open_wire);
+      printf("There is an open wire on IC %d Channel: %ld\r\n",current_ic+1,a_d->BMS_IC[current_ic].system_open_wire);
     }
   }
   //Serial.println("\n");
@@ -1039,7 +1056,7 @@ void print_pec_error_count(void)
       //Serial.print(BMS_IC[current_ic].crc_count.pec_count,DEC);
       //Serial.print(F(" : PEC Errors Detected on IC"));
       //Serial.println(current_ic+1,DEC);
-      printf("\r\n%d : PEC Errors Detected on IC%d",a_d.BMS_IC[current_ic].crc_count.pec_count,current_ic+1);
+      printf("\r\n%d : PEC Errors Detected on IC%d",a_d->BMS_IC[current_ic].crc_count.pec_count,current_ic+1);
   }
   //Serial.println("\n");
   printf("\r\n");
@@ -1064,10 +1081,10 @@ void print_wrpwm(void)
     {
       //Serial.print(F(", 0x"));
      //serial_print_hex(BMS_IC[current_ic].pwm.tx_data[i]);
-     printf(", %.02x",a_d.BMS_IC[current_ic].pwm.tx_data[i]);
+     printf(", %.02x",a_d->BMS_IC[current_ic].pwm.tx_data[i]);
     }
     //Serial.print(F(", Calculated PEC: 0x"));
-    pwm_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].pwm.tx_data[0]);
+    pwm_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].pwm.tx_data[0]);
     //serial_print_hex((uint8_t)(pwm_pec>>8));
     //Serial.print(F(", 0x"));
     //serial_print_hex((uint8_t)(pwm_pec));
@@ -1093,14 +1110,14 @@ void print_rxpwm(void)
     {
       //Serial.print(F(", 0x"));
      //serial_print_hex(BMS_IC[current_ic].pwm.rx_data[i]);
-     printf(", %.02x",a_d.BMS_IC[current_ic].pwm.rx_data[i]);
+     printf(", %.02x",a_d->BMS_IC[current_ic].pwm.rx_data[i]);
     }
     //Serial.print(F(", Received PEC: 0x"));
     //serial_print_hex(BMS_IC[current_ic].pwm.rx_data[6]);
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].pwm.rx_data[7]);
     //Serial.println("\n");
-    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].pwm.rx_data[6],a_d.BMS_IC[current_ic].pwm.rx_data[7]);
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].pwm.rx_data[6],a_d->BMS_IC[current_ic].pwm.rx_data[7]);
   }
 }
 
@@ -1124,11 +1141,11 @@ void print_wrsctrl(void)
     {
       //Serial.print(F(", 0x"));
       //serial_print_hex(BMS_IC[current_ic].sctrl.tx_data[i]);
-      printf(", %.02x",a_d.BMS_IC[current_ic].sctrl.tx_data[i]);
+      printf(", %.02x",a_d->BMS_IC[current_ic].sctrl.tx_data[i]);
     }
 
     //Serial.print(F(", Calculated PEC: 0x"));
-    sctrl_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].sctrl.tx_data[0]);
+    sctrl_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].sctrl.tx_data[0]);
     //serial_print_hex((uint8_t)(sctrl_pec>>8));
     //Serial.print(F(", 0x"));
     //serial_print_hex((uint8_t)(sctrl_pec));
@@ -1155,7 +1172,7 @@ void print_rxsctrl(void)
     {
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].sctrl.rx_data[i]);
-    printf(", %.02x",a_d.BMS_IC[current_ic].sctrl.rx_data[i]);
+    printf(", %.02x",a_d->BMS_IC[current_ic].sctrl.rx_data[i]);
     }
 
     //Serial.print(F(", Received PEC: 0x"));
@@ -1163,7 +1180,7 @@ void print_rxsctrl(void)
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].sctrl.rx_data[7]);
     //Serial.println("\n");
-    printf(", Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].sctrl.rx_data[6],a_d.BMS_IC[current_ic].sctrl.rx_data[7]);
+    printf(", Received PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].sctrl.rx_data[6],a_d->BMS_IC[current_ic].sctrl.rx_data[7]);
   }
 }
 
@@ -1190,10 +1207,10 @@ void print_wrpsb(uint8_t type)
         //serial_print_hex(BMS_IC[current_ic].pwmb.tx_data[1]);
         //Serial.print(F(", 0x"));
         //serial_print_hex(BMS_IC[current_ic].pwmb.tx_data[2]);
-        printf(" IC %d, %.02x, %.02x, %.02x",current_ic+1,a_d.BMS_IC[current_ic].pwmb.tx_data[0],a_d.BMS_IC[current_ic].pwmb.tx_data[1],a_d.BMS_IC[current_ic].pwmb.tx_data[2]);
+        printf(" IC %d, %.02x, %.02x, %.02x",current_ic+1,a_d->BMS_IC[current_ic].pwmb.tx_data[0],a_d->BMS_IC[current_ic].pwmb.tx_data[1],a_d->BMS_IC[current_ic].pwmb.tx_data[2]);
 
         //Serial.print(F(", Calculated PEC: 0x"));
-        psb_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].pwmb.tx_data[0]);
+        psb_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].pwmb.tx_data[0]);
         //serial_print_hex((uint8_t)(psb_pec>>8));
         //Serial.print(F(", 0x"));
         //serial_print_hex((uint8_t)(psb_pec));
@@ -1213,12 +1230,12 @@ void print_wrpsb(uint8_t type)
         //serial_print_hex(BMS_IC[current_ic].sctrlb.tx_data[5]);
 
         //Serial.print(F(", Calculated PEC: 0x"));
-        psb_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].sctrlb.tx_data[0]);
+        psb_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].sctrlb.tx_data[0]);
         //serial_print_hex((uint8_t)(psb_pec>>8));
         //Serial.print(F(", 0x"));
         //serial_print_hex((uint8_t)(psb_pec));
         //Serial.println("\n");
-        printf(" %.02x, %.02x, %.02x, Calculated PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].sctrlb.tx_data[3],a_d.BMS_IC[current_ic].sctrlb.tx_data[4],a_d.BMS_IC[current_ic].sctrlb.tx_data[5],(uint8_t)(psb_pec>>8),(uint8_t)(psb_pec));
+        printf(" %.02x, %.02x, %.02x, Calculated PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].sctrlb.tx_data[3],a_d->BMS_IC[current_ic].sctrlb.tx_data[4],a_d->BMS_IC[current_ic].sctrlb.tx_data[5],(uint8_t)(psb_pec>>8),(uint8_t)(psb_pec));
       }
   }
 }
@@ -1252,7 +1269,7 @@ void print_rxpsb(uint8_t type)
         //Serial.print(F(", 0x"));
         //serial_print_hex(BMS_IC[current_ic].pwmb.rx_data[7]);
        //Serial.println("\n");
-       printf(" %.02x, %.02x, %.02x, Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].pwmb.rx_data[0],a_d.BMS_IC[current_ic].pwmb.rx_data[1],a_d.BMS_IC[current_ic].pwmb.rx_data[2],a_d.BMS_IC[current_ic].pwmb.rx_data[6],a_d.BMS_IC[current_ic].pwmb.rx_data[7]);
+       printf(" %.02x, %.02x, %.02x, Received PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].pwmb.rx_data[0],a_d->BMS_IC[current_ic].pwmb.rx_data[1],a_d->BMS_IC[current_ic].pwmb.rx_data[2],a_d->BMS_IC[current_ic].pwmb.rx_data[6],a_d->BMS_IC[current_ic].pwmb.rx_data[7]);
 
       }
   }
@@ -1275,7 +1292,7 @@ void print_rxpsb(uint8_t type)
         //Serial.print(F(", 0x"));
         //serial_print_hex(BMS_IC[current_ic].sctrlb.rx_data[7]);
         //Serial.println("\n");
-        printf(" %.02x, %.02x, %.02x, Received PEC: %.02x, %.02x\r\n",a_d.BMS_IC[current_ic].sctrlb.rx_data[3],a_d.BMS_IC[current_ic].sctrlb.rx_data[4],a_d.BMS_IC[current_ic].sctrlb.rx_data[5],a_d.BMS_IC[current_ic].sctrlb.rx_data[6],a_d.BMS_IC[current_ic].sctrlb.rx_data[7]);
+        printf(" %.02x, %.02x, %.02x, Received PEC: %.02x, %.02x\r\n",a_d->BMS_IC[current_ic].sctrlb.rx_data[3],a_d->BMS_IC[current_ic].sctrlb.rx_data[4],a_d->BMS_IC[current_ic].sctrlb.rx_data[5],a_d->BMS_IC[current_ic].sctrlb.rx_data[6],a_d->BMS_IC[current_ic].sctrlb.rx_data[7]);
       }
   }
 }
@@ -1300,11 +1317,11 @@ void print_wrcomm(void)
     {
       //Serial.print(F(", 0x"));
       //serial_print_hex(BMS_IC[current_ic].com.tx_data[i]);
-      printf(", %x",a_d.BMS_IC[current_ic].com.tx_data[i]);
+      printf(", %x",a_d->BMS_IC[current_ic].com.tx_data[i]);
     }
     //Serial.print(F(", Calculated PEC: 0x"));
     printf(", Calculated PEC: ");
-    comm_pec = pec15_calc(6,&a_d.BMS_IC[current_ic].com.tx_data[0]);
+    comm_pec = pec15_calc(6,&a_d->BMS_IC[current_ic].com.tx_data[0]);
     //serial_print_hex((uint8_t)(comm_pec>>8));
     printf("%x",comm_pec>>8);
     //Serial.print(F(", 0x"));
@@ -1331,14 +1348,14 @@ void print_rxcomm(void)
     {
       //Serial.print(F(", 0x"));
       //serial_print_hex(BMS_IC[current_ic].com.rx_data[i]);
-      printf(", %x",a_d.BMS_IC[current_ic].com.rx_data[i]);
+      printf(", %x",a_d->BMS_IC[current_ic].com.rx_data[i]);
     }
     //Serial.print(F(", Received PEC: 0x"));
     //serial_print_hex(BMS_IC[current_ic].com.rx_data[6]);
     //Serial.print(F(", 0x"));
     //serial_print_hex(BMS_IC[current_ic].com.rx_data[7]);
     //Serial.println("\n");
-    printf(", Received PEC: %x, %x\r\n",a_d.BMS_IC[current_ic].com.rx_data[6],a_d.BMS_IC[current_ic].com.rx_data[7]);
+    printf(", Received PEC: %x, %x\r\n",a_d->BMS_IC[current_ic].com.rx_data[6],a_d->BMS_IC[current_ic].com.rx_data[7]);
   }
 }
 
@@ -1353,7 +1370,7 @@ void check_mute_bit(void)
     //Serial.print(F(" Mute bit in Configuration Register B: 0x"));
     //serial_print_hex((BMS_IC[current_ic].configb.rx_data[1])&(0x80));
     //Serial.println("\n");
-    printf(" Mute bit in Configuration Register B: %.02x\r\n",(a_d.BMS_IC[current_ic].configb.rx_data[1])&(0x80));
+    printf(" Mute bit in Configuration Register B: %.02x\r\n",(a_d->BMS_IC[current_ic].configb.rx_data[1])&(0x80));
   }
 }
 
@@ -1378,6 +1395,6 @@ void check_error(int error)
 
 void init_app_data_bms(app_data *app_data_init)
 {
-	a_d = *app_data_init;
+	a_d = app_data_init;
 }
 

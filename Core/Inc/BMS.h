@@ -11,6 +11,9 @@
 #include "LTC681x.h"
 #include "LTC6813.h"
 #include "help.h"
+#include "string.h"
+#include "cmsis_os.h"
+
 
 void spi_infinite_send(uint8_t nargs, char **args);
 
@@ -58,9 +61,11 @@ void pwm_in_test(uint8_t nargs, char **args);
 
 void dac_test(uint8_t nargs, char **args);
 
-void charging_mode(uint8_t nargs, char **args);
+void charging_mode();
 
-void discharge_mode(uint8_t nargs, char **args);
+void discharge_mode();
+
+void vmon();
 
 void print_conv_time(uint32_t conv_time);
 

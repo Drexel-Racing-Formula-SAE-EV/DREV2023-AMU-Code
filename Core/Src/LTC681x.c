@@ -48,7 +48,7 @@
 #include "help.h"
 //#include "bms_hardware.h"
 
-static app_data a_d;
+static app_data *a_d;
 uint8_t blank_data[100];
 
 /* Wake isoSPI up from IDlE state and enters the READY state */
@@ -2240,10 +2240,10 @@ void spi_write_array(uint8_t len, // Option: Number of bytes to be written on th
   /*for (uint8_t i = 0; i < len; i++)
   {
     //SPI.transfer((int8_t)data[i]);
-    HAL_SPI_Transmit(a_d.hspi1, data[i],1,100);
+    HAL_SPI_Transmit(a_d->hspi1, data[i],1,100);
     //printf("%x ",data[i]);
   }*/
-	HAL_SPI_Transmit(a_d.hspi1, data,len,100);
+	HAL_SPI_Transmit(a_d->hspi1, data,len,100);
   /*printf("write array\r\n");
   printf("%d len of send\r\n",len);
   for(uint8_t i = 0; i<len; i++){
@@ -2266,9 +2266,9 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
 {
   /*for (uint8_t i = 0; i < tx_len; i++)
   {
-    HAL_SPI_Transmit(a_d.hspi1, tx_Data[i],1,10000);
+    HAL_SPI_Transmit(a_d->hspi1, tx_Data[i],1,10000);
   }*/
-  HAL_SPI_Transmit(a_d.hspi1, tx_Data,tx_len,100);
+  HAL_SPI_Transmit(a_d->hspi1, tx_Data,tx_len,100);
   /*printf("write array\r\n");
   printf("%d len of send\r\n",tx_len);
   for(uint8_t i = 0; i<tx_len; i++){
@@ -2278,12 +2278,12 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
   //printf("next cell\r\n");
   /*for (uint8_t i = 0; i < rx_len; i++)
   {
-	  debug = HAL_SPI_TransmitReceive(a_d.hspi1, blank_data[0], rx_data[i],1,10000);
-	  //HAL_SPI_Receive(a_d.hspi1, rx_data,1,10000);
+	  debug = HAL_SPI_TransmitReceive(a_d->hspi1, blank_data[0], rx_data[i],1,10000);
+	  //HAL_SPI_Receive(a_d->hspi1, rx_data,1,10000);
   }*/
-  HAL_SPI_TransmitReceive(a_d.hspi1, blank_data, rx_data,rx_len,100);
+  HAL_SPI_TransmitReceive(a_d->hspi1, blank_data, rx_data,rx_len,100);
   //printf("%d len of rx\r\n",rx_len);
-  //HAL_SPI_Receive(a_d.hspi1, rx_data,rx_len,10000);
+  //HAL_SPI_Receive(a_d->hspi1, rx_data,rx_len,10000);
   /*printf(" cell\r\n");
  for(uint8_t i = 0; i<rx_len; i++){
   	printf("%.02x\r\n",rx_data[i]);
@@ -2300,27 +2300,27 @@ uint8_t spi_read_byte(uint8_t tx_dat)
   uint8_t data;
   uint8_t blank_data[1]={tx_dat};
   //data = (uint8_t)SPI.transfer(0xFF);
-  HAL_SPI_TransmitReceive(a_d.hspi1,blank_data, data,1,100);
-  //HAL_SPI_Transmit(a_d.hspi1,blank_data, 1,100);
+  HAL_SPI_TransmitReceive(a_d->hspi1,blank_data, data,1,100);
+  //HAL_SPI_Transmit(a_d->hspi1,blank_data, 1,100);
   //printf("%x\r\n",data);
   return(data);
 }
 
 void init_app_data_681x(app_data *app_data_init)
 {
-	a_d = *app_data_init;
+	a_d = app_data_init;
 	for (uint8_t i = 0; i < 100; i++)
 	{
 	  blank_data[i]=0xFF;
 	}
-	if(*a_d.debug==1){
+	if(a_d->debug==1){
 		printf("\r\nDebugging init_app_data_681x\r\n");
 		uint8_t data[3],sent[3];
 		sent[0]=0;
 		while (sent[0]<3){
 			sent[0] +=1;
 			LTC_6813_CS_RESET
-			HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
+			HAL_SPI_TransmitReceive(a_d->hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
 			printf("data sent %d :: data in init: %d \r\n",sent[0],data[0]);
 			LTC_6813_CS_SET
 			HAL_Delay(1000);

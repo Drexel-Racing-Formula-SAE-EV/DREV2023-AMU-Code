@@ -82,14 +82,14 @@ const osThreadAttr_t TempTask_attributes = {
 osThreadId_t V_MonitorHandle;
 const osThreadAttr_t V_Monitor_attributes = {
   .name = "V_Monitor",
-  .stack_size = 256 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal6,
 };
 /* Definitions for CLI */
 osThreadId_t CLIHandle;
 const osThreadAttr_t CLI_attributes = {
   .name = "CLI",
-  .stack_size = 1028 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityRealtime,
 };
 /* Definitions for Disp_V */
@@ -158,23 +158,6 @@ const uint8_t PRINT_PEC = DISABLED; //!< This is to ENABLED or DISABLED printing
  ******************************************************/
 cell_asic BMS_IC[TOTAL_IC]; //!< Global Battery Variable
 
-/*************************************************************************
- Set configuration register. Refer to the data sheet
-**************************************************************************/
-uint8_t REFON = 1; //!< Reference Powered Up Bit
-uint8_t ADCOPT = 0; //!< ADC Mode option bit
-uint8_t GPIOBITS_A[5] = {0,0,1,1,1}; //!< GPIO Pin Control // Gpio 1,2,3,4,5
-uint8_t GPIOBITS_B[4] = {0,0,0,0}; //!< GPIO Pin Control // Gpio 6,7,8,9
-uint16_t UV=UV_THRESHOLD; //!< Under voltage Comparison Voltage
-uint16_t OV=OV_THRESHOLD; //!< Over voltage Comparison Voltage
-uint8_t DCCBITS_A[12] = {0,0,0,0,0,0,0,0,0,0,0,0}; //!< Discharge cell switch //Dcc 1,2,3,4,5,6,7,8,9,10,11,12
-uint8_t DCCBITS_B[7]= {0,0,0,0,0,0,0}; //!< Discharge cell switch //Dcc 0,13,14,15
-uint8_t DCTOBITS[4] = {1,0,1,0}; //!< Discharge time value //Dcto 0,1,2,3  // Programed for 4 min
-/*Ensure that Dcto bits are set according to the required discharge time. Refer to the data sheet */
-uint8_t FDRF = 0; //!< Force Digital Redundancy Failure Bit
-uint8_t DTMEN = 1; //!< Enable Discharge Timer Monitor
-uint8_t PSBITS[2]= {0,0}; //!< Digital Redundancy Path Selection//ps-0,1
-
 uint8_t UART2_rxBuffer[1] = {0};
 
 uint8_t uart_cmd = 0;
@@ -185,31 +168,9 @@ uint8_t tx_buf[TXBUF_SIZE];
 uint8_t command_buf[RXBUF_SIZE];
 uint8_t cli_msg_pending;
 
-volatile uint8_t debugg = DEBUGG;
-volatile uint16_t v_max = 0;
-volatile uint16_t v_min = 0;
-volatile uint16_t v_avg = 0;
-volatile uint32_t Freq = 0;
-volatile float Duty = 0;
-volatile uint8_t stop_flag = 0;
-volatile uint8_t s_pin = 0;
-volatile uint8_t cvnb[18];
-volatile uint8_t tap = 0;
-//SET DEFAULT VALUES
-volatile float max_curr=0;
-volatile float max_cell_volt=0;
-volatile float min_cell_volt=0;
-volatile float max_sys_volt=0;
-volatile float min_sys_volt=0;
-volatile uint8_t max_soc=0;
-volatile uint8_t min_soc=0;
-volatile uint8_t VDisp = 0;
-volatile uint8_t mode = 0;
-volatile int hall_current = 0;
-
 DATALOG_DISABLED;
 //declare app_data
-static app_data a_d;
+static app_data a_d = {0};//static
 
 /* USER CODE END PV */
 
@@ -259,7 +220,33 @@ PUTCHAR_PROTOTYPE
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	app_data a_d;
+	a_d.ltc.OV_THRESHOLD = 0;
+
+	a_d.ltc.REFON = 1; //!< Reference Powered Up Bit
+	a_d.ltc.ADCOPT = 0; //!< ADC Mode option bit
+	//!< GPIO Pin Control // Gpio 1,2,3,4,5
+	a_d.ltc.GPIOBITS_A[0] = 0;a_d.ltc.GPIOBITS_A[1] = 0;a_d.ltc.GPIOBITS_A[2] = 1;a_d.ltc.GPIOBITS_A[3] = 0;a_d.ltc.GPIOBITS_A[4] = 1;
+	//!< GPIO Pin Control // Gpio 6,7,8,9
+	for(int i = 0; i<4;i++){
+		a_d.ltc.GPIOBITS_B[i]=0;
+	}
+	a_d.ltc.UV=a_d.ltc.UV_THRESHOLD; //!< Under voltage Comparison Voltage
+	a_d.ltc.OV=a_d.ltc.OV_THRESHOLD; //!< Over voltage Comparison Voltage
+	//!< Discharge cell switch //Dcc 1,2,3,4,5,6,7,8,9,10,11,12
+	for(int i = 0; i<4;i++){
+		a_d.ltc.DCCBITS_A[i]=0;
+	}
+	//!< Discharge cell switch //Dcc 0,13,14,15
+	for(int i = 0; i<7;i++){
+		a_d.ltc.DCCBITS_B[i]=0;
+	}
+	//!< Discharge time value //Dcto 0,1,2,3  // Programed for 4 min
+	a_d.ltc.DCTOBITS[0] = 1;a_d.ltc.DCTOBITS[1] = 0;a_d.ltc.DCTOBITS[2] = 1;a_d.ltc.DCTOBITS[3] = 0;
+	/*Ensure that Dcto bits are set according to the required discharge time. Refer to the data sheet */
+	a_d.ltc.FDRF = 0; //!< Force Digital Redundancy Failure Bit
+	a_d.ltc.DTMEN = 1; //!< Enable Discharge Timer Monitor
+	//!< Digital Redundancy Path Selection//ps-0,1
+	a_d.ltc.PSBITS[0]= 0; a_d.ltc.PSBITS[1]= 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -272,8 +259,8 @@ int main(void)
   LTC6813_init_cfgb(TOTAL_IC,BMS_IC);
   for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
   {
-    LTC6813_set_cfgr(current_ic,BMS_IC,REFON,ADCOPT,GPIOBITS_A,DCCBITS_A, DCTOBITS, UV, OV);
-    LTC6813_set_cfgrb(current_ic,BMS_IC,FDRF,DTMEN,PSBITS,GPIOBITS_B,DCCBITS_B);
+    LTC6813_set_cfgr(current_ic,BMS_IC,a_d.ltc.REFON,a_d.ltc.ADCOPT,a_d.ltc.GPIOBITS_A,a_d.ltc.DCCBITS_A, a_d.ltc.DCTOBITS, a_d.ltc.UV, a_d.ltc.OV);
+    LTC6813_set_cfgrb(current_ic,BMS_IC,a_d.ltc.FDRF,a_d.ltc.DTMEN,a_d.ltc.PSBITS,a_d.ltc.GPIOBITS_B,a_d.ltc.DCCBITS_B);
   }
   LTC6813_reset_crc_count(TOTAL_IC,BMS_IC);
   LTC6813_init_reg_limits(TOTAL_IC,BMS_IC);
@@ -313,28 +300,32 @@ int main(void)
   a_d.htim8 = &htim8;
   a_d.htim9 = &htim9;
   a_d.hdac = &hdac;
-  a_d.BMS_IC = &BMS_IC;
-  a_d.debug = &debugg;
-  a_d.v_max = &v_max;
-  a_d.v_min = &v_min;
-  a_d.v_avg = &v_avg;
-  a_d.Freq = &Freq;
-  a_d.Duty = &Duty;
-  a_d.stop_flag = &stop_flag;
-  a_d.s_pin = &s_pin;
-  *a_d.cvnb = &cvnb;
-  a_d.tap = &tap;
-  a_d.max_curr = &max_curr;
-  a_d.max_cell_volt = &max_cell_volt;
-  a_d.min_cell_volt = &min_cell_volt;
-  a_d.max_sys_volt = &max_sys_volt;
-  a_d.min_sys_volt = &min_sys_volt;
-  a_d.max_soc = &max_soc;
-  a_d.min_soc = &min_soc;
-  a_d.VDisp = &VDisp;
-  a_d.mode = &mode;
-  a_d.hall_current = &hall_current;
+  a_d.BMS_IC = BMS_IC;
+  a_d.debug = 0;
+  a_d.v_max = 0;
+  a_d.v_min = 0;
+  a_d.v_avg = 0;
+  a_d.Freq = 0;
+  a_d.Duty = 0;
+  a_d.stop_flag = 0;
+  a_d.s_pin = 0;
+  a_d.cvnb;
+  a_d.tap = 0;
+  a_d.max_curr = 10;
+  //printf(" ad:%d reg:%d",a_d.max_curr,max_curr);
+  a_d.max_cell_volt = 0;
+  a_d.min_cell_volt = 0;
+  a_d.max_sys_volt = 0;
+  a_d.min_sys_volt = 0;
+  a_d.max_soc = 0;
+  a_d.min_soc = 0;
+  a_d.VDisp = 0;
+  a_d.mode = 127;
+  printf(" ad:%d reg:%d\r\n",a_d.mode,127);
+  a_d.hall_current = 0;
   init_appdata(&a_d);
+
+  //printf("a_d.max_curr %d\r\n",*a_d.max_curr);
 
   printf("LETSS GOOOOOOO\r\n");
 
@@ -392,15 +383,14 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of CLI */
-    CLIHandle = osThreadNew(CLI_START, NULL, &CLI_attributes);
   /* creation of TempTask */
   TempTaskHandle = osThreadNew(Start_Temp_Mon, NULL, &TempTask_attributes);
 
   /* creation of V_Monitor */
   V_MonitorHandle = osThreadNew(Start_V_Mon, NULL, &V_Monitor_attributes);
 
-
+  /* creation of CLI */
+  CLIHandle = osThreadNew(CLI_START, NULL, &CLI_attributes);
 
   /* creation of Disp_V */
   Disp_VHandle = osThreadNew(Start_V_Display, NULL, &Disp_V_attributes);
@@ -1197,9 +1187,9 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 		if (ICValue != 0)
 		{
 			// calculate the Duty Cycle
-			*a_d.Duty = (HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2) *100)/ICValue;//add 1 to duty cycle for some reason! but its accurate
+			a_d.Duty = (HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2) *100)/ICValue;//add 1 to duty cycle for some reason! but its accurate
 
-			*a_d.Freq = 168000000/ICValue;
+			a_d.Freq = 168000000/ICValue;
 			/*if(i<5){
 				printf("Duty:%f Freq:%ul\r\n",*a_d.Duty,*a_d.Freq);i++;
 			}*/
@@ -1211,19 +1201,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     HAL_UART_Transmit(&huart2, UART2_rxBuffer, 1, 100);
     HAL_UART_Receive_IT(&huart2, UART2_rxBuffer, 1);
-	 if(*a_d.stop_flag==1){
-		*a_d.stop_flag=0;
+	 if(a_d.stop_flag==1){
+		a_d.stop_flag=0;
 	 }
 	 else{
-		*a_d.stop_flag=1;
+		a_d.stop_flag=1;
 	 }
 }
 
 void init_appdata(app_data *app_data_init)
 {
-	a_d = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files
+	//a_d = *app_data_init;//placed in because pointers if not saved will not be able to be passed to other files
 
-	if(*a_d.debug==1){
+	if(a_d.debug==1){
 		printf("\r\nDebugging init_appdata(main)\r\n");
 		int data[3],sent[3];
 		sent[0]=0;
@@ -1258,6 +1248,10 @@ void Start_Temp_Mon(void *argument)
   for(;;)
   {
 	  //printf("hi\r\n");
+	 // printf(" debug:%d\r\n",a_d.debug);
+	  if(a_d.debug != 0){
+		  a_d.debug=0;
+	  }
     osDelay(500);
   }
   /* USER CODE END 5 */
@@ -1276,7 +1270,8 @@ void Start_V_Mon(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  coll_cell_volt();
+	  //coll_cell_volt();//collects cell voltage every 1 second can be faster
+	  //a_d.VDisp=1;
 	  osDelay(1000);
   }
   /* USER CODE END Start_V_Mon */
@@ -1331,14 +1326,16 @@ void Start_V_Display(void *argument)
   for(;;)
   {
 	  //printf("boogers\r\n");
-	  if(*a_d.VDisp == 1){
-		  print_cells(DATALOG_DISABLED);
-		  //osDelay(2000);
-		  /*i++;
+	  if(a_d.VDisp == 1){
+		  printf("boogers\r\n");
+		  print_cells(0);//causes cli freeze why? if called anywhere else no cli freeze
+		  a_d.VDisp = 0;
+		  osDelay(1000);
+		  i++;
 		  if(i>=3){
 			  i=0;
-			  *a_d.VDisp = 0;
-		  }*/
+			  a_d.VDisp = 0;
+		  }
 	  }
 	  osDelay(1000);
   }
@@ -1358,10 +1355,11 @@ void Start_Charging(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	if(*a_d.mode==0){
-		if(*a_d.max_curr>0){
+	if(a_d.mode==0){//0
+		printf(" in charge\r\n");
+		if(a_d.max_curr>0){
 			//ADC of hall effect-at pin PC1
-			if(*a_d.hall_current>=*a_d.max_curr+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
+			if(a_d.hall_current>=a_d.max_curr+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
 				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
 
 			}
@@ -1391,17 +1389,18 @@ void Start_Discharging(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	if(*a_d.mode==1){
-		if(*a_d.max_curr>0){
-			if(*a_d.hall_current < *a_d.max_curr+1){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+	if(a_d.mode==1){
+		printf(" in dismode charge\r\n");
+		if(a_d.max_curr>0){
+			if(-(a_d.hall_current) > -(a_d.max_curr+1)){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
 			}
 			else{
 
 			}
 		}
 		else{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power output
+			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
 		}
 	}
     osDelay(1000);
@@ -1422,8 +1421,9 @@ void Start_Balancing(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  if(*a_d.mode ==2){
-
+	  if(a_d.mode ==2){
+		  printf(" in bal\r\n");
+		  bal_all(0,NULL);
 	  }
     osDelay(1000);
   }
@@ -1451,7 +1451,7 @@ void Start_CURR_COLL(void *argument)
 		  u_sleep(3);
 		  CSE4_SET
 		  printf("hal lvl:%.02x,%.02x",spi_rx_buffer[0],spi_rx_buffer[1]);
-		  *a_d.hall_current = spi_rx_buffer[0]||spi_rx_buffer[1]>>8;
+		  a_d.hall_current = spi_rx_buffer[0]||spi_rx_buffer[1]>>8;
 	  }
 	  osDelay(1);
   }

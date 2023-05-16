@@ -63,7 +63,7 @@
 //#include "LTC681x.h"
 #include "LTC6813.h"
 
-static app_data a_d;
+static app_data *a_d;
 
 /* Helper function to initialize register limits. */
 void LTC6813_init_reg_limits(uint8_t total_ic, //Number of ICs in the system
@@ -786,16 +786,16 @@ void LTC6813_set_cfgrb_dcc_b(uint8_t nIC, cell_asic *ic, uint8_t dccbits[])
 
 void init_app_data_6813(app_data *app_data_init)
 {
-	a_d = *app_data_init;
-	if(*a_d.debug==1){
-		printf("prescaler: %lu\r\n",a_d.hspi1->Init.BaudRatePrescaler);
+	a_d = app_data_init;
+	if(a_d->debug==1){
+		printf("prescaler: %lu\r\n",a_d->hspi1->Init.BaudRatePrescaler);
 		printf("\r\nDebugging init_app_data_681x\r\n");
 		uint8_t data[3],sent[3];
 		sent[0]=0;
 		while (sent[0]<3){
 			sent[0] +=1;
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-			HAL_SPI_TransmitReceive(a_d.hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
+			HAL_SPI_TransmitReceive(a_d->hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
 			printf("data sent %d :: data in init: %d \r\n",sent[0],data[0]);
 			HAL_SPI_TransmitReceive(app_data_init->hspi1, (uint8_t *) sent,(uint8_t *) data,1,100);
 			printf("data sent %d :: data in init: %d \r\n",sent[0],data[0]);
@@ -803,5 +803,5 @@ void init_app_data_6813(app_data *app_data_init)
 			HAL_Delay(1000);
 		}
 	}
-	init_app_data_681x(&a_d);
+	init_app_data_681x(a_d);
 }

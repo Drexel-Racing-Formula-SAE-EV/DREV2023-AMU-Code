@@ -161,6 +161,26 @@ typedef struct
 
 typedef struct
 {
+	uint16_t OV_THRESHOLD;
+	uint16_t UV_THRESHOLD;
+	uint16_t MEASUREMENT_LOOP_TIME;
+	uint8_t REFON;
+	uint8_t ADCOPT;
+	uint8_t GPIOBITS_A[5];
+	uint8_t GPIOBITS_B[4];
+	uint16_t UV;
+	uint16_t OV;
+	uint8_t DCCBITS_A[12];
+	uint8_t DCCBITS_B[7];
+	uint8_t DCTOBITS[4];
+	uint8_t FDRF;
+	uint8_t DTMEN;
+	uint8_t PSBITS[2];
+
+}ltcvar;
+
+typedef struct
+{
 	CAN_HandleTypeDef *hcan1;
 
 	SPI_HandleTypeDef *hspi1;
@@ -180,40 +200,42 @@ typedef struct
 
 	cell_asic *BMS_IC;
 
-	uint8_t *stop_flag;
+	ltcvar ltc;
+
+	 uint8_t stop_flag;
 
 	//PWM IN Values
-	uint32_t *Freq;
-	float *Duty;
+	 uint32_t Freq;
+	 float Duty;
 
-	uint8_t *debug;
+	 uint8_t debug;
 	//MEASURING
-	uint16_t *v_max;
-	uint16_t *v_min;
-	uint16_t *v_avg;
+	 uint16_t v_max;
+	 uint16_t v_min;
+	 uint16_t v_avg;
 
 	//BALANCING
 	//sets the discharge pin
-	uint8_t *s_pin;
+	 uint8_t s_pin;
 	//cell voltage not balanced/too high array[18]
-	uint8_t **cvnb[18];
+	 uint8_t cvnb[18];
 	//track cvnb position for marking unbalanced cells
-	uint8_t *tap;
+	 uint8_t tap;
 
 	//USER PARAMETERS
-	float *max_curr;
-	float *max_cell_volt;
-	float *min_cell_volt;
-	float *max_sys_volt;
-	float *min_sys_volt;
-	uint8_t *max_soc;
-	uint8_t *min_soc;
+	 float max_curr;
+	 float max_cell_volt;
+	 float min_cell_volt;
+	 float max_sys_volt;
+	 float min_sys_volt;
+	 uint8_t max_soc;
+	 uint8_t min_soc;
 
-	uint8_t *VDisp;
+	 uint8_t VDisp;
 
-	uint8_t *mode;
+	 uint8_t mode;
 
-	int *hall_current;
+	 int hall_current;
 
 } app_data;
 
