@@ -206,12 +206,12 @@ void display(uint8_t nargs, char **args){
 		}
 		else if(strcmp(args[1], "volt") == 0){
 //Display array of all voltages and overall voltage, updating 1/s
-			//a_d->VDisp = 1;
+			a_d->VDisp = !a_d->VDisp;
 			//vmon();
-			for(int i =0;i<3;i++){
+			/*for(int i =0;i<3;i++){
 				print_cells(0);
 				osDelay(1000);
-			}
+			}*/
 			//HAL_Delay(1000);
 			//printf("VDISP = %d\r\n",a_d->VDisp);
 			return;
@@ -233,18 +233,13 @@ void edit_params(uint8_t nargs, char **args){
 		else{
 			if(strcmp(args[1], "MC") == 0){
 				a_d->max_curr = atoi(args[2]);
-				//HAL_Delay(5000);
-				//print statement without delay = death??
 				//printf("value is now %f",*a_d->max_curr);
-				//printf("broken?\r\n");
 			}
 			else if(strcmp(args[1], "MACV") == 0){
 				if(0<atoi(args[2])&&atoi(args[2])<6.6){
 					a_d->max_cell_volt = atoi(args[2]);
 				}
 				//printf("value is now %f",*a_d->max_cell_volt);
-				//HAL_Delay(500);
-				//printf("broken?\r\n");
 
 			}
 			else if(strcmp(args[1], "MICV") == 0){
@@ -348,7 +343,9 @@ void coll_cell_volt(void){//uint8_t nargs, char **args){
     wakeup_sleep(TOTAL_IC);
     error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all cell voltage registers
     check_error(error);
-    print_cells(DATALOG_DISABLED);
+    if(a_d->VDisp == 1){
+    	print_cells(DATALOG_DISABLED);
+    }
 }
 
 void cb_test(void){//uint8_t nargs, char **args){
@@ -450,17 +447,47 @@ void coll_unbalanced_cells(void){
 }
 
 void temp_calc(uint8_t nargs, char **args){
-    wakeup_sleep(TOTAL_IC);
+    /************************************************************
+      Ensure to set the GPIO bits to 1 in the CFG register group.
+    *************************************************************/
+	uint8_t adgid = 0b1001100;
+	printf("%x",adgid);
     for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
     {
-      LTC6813_set_cfgr(current_ic,a_d->BMS_IC,a_d->ltc.REFON,a_d->ltc.ADCOPT,a_d->ltc.GPIOBITS_A,a_d->ltc.DCCBITS_A, a_d->ltc.DCTOBITS, a_d->ltc.UV, a_d->ltc.OV);
-      LTC6813_set_cfgrb(current_ic,a_d->BMS_IC,a_d->ltc.FDRF,a_d->ltc.DTMEN,a_d->ltc.PSBITS,a_d->ltc.GPIOBITS_B,a_d->ltc.DCCBITS_B);
+      //Communication control bits and communication data bytes. Refer to the data sheet.
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x08; // Fcom master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00; // Icom Blank (0) + eeprom address(word address) D1 (0x00)
+		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x08; // Fcom master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x6A; // Icom Start (6) + I2C_address D2 (0xA1)(Read operation)
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0x18; // Fcom master NACK(8)
     }
+    wakeup_sleep(TOTAL_IC);
+    LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm register
 
-    LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
-    LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
-    print_wrconfig();
-    print_wrconfigb();
+    wakeup_idle(TOTAL_IC);
+    LTC6813_stcomm(3); // data length=3 // initiates communication between master and the I2C slave
+
+    for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
+    {
+      //Communication control bits and communication data bytes. Refer to the data sheet.
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x0F; // Icom Blank (0) + data D0 (FF)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0xF9; // Fcom master NACK + Stop(9)
+		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x7F; // Icom No Transmit (7) + data D1 (FF)
+		a_d->BMS_IC[current_ic].com.tx_data[3]= 0xF9; // Fcom master NACK + Stop(9)
+		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F; // Icom No Transmit (7) + data D2 (FF)
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9; // Fcom master NACK + Stop(9)
+    }
+    wakeup_idle(TOTAL_IC);
+    LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm register
+
+    wakeup_idle(TOTAL_IC);
+    LTC6813_stcomm(1); // data length=1 // initiates communication between master and the I2C slave
+
+    wakeup_idle(TOTAL_IC);
+    error = LTC6813_rdcomm(TOTAL_IC,a_d->BMS_IC); // read from comm register
+    check_error(error);
+    print_rxcomm(); // print received data from the comm register
 }
 
 void get_cell_data(uint8_t nargs, char **args){

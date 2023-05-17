@@ -82,7 +82,7 @@ const osThreadAttr_t TempTask_attributes = {
 osThreadId_t V_MonitorHandle;
 const osThreadAttr_t V_Monitor_attributes = {
   .name = "V_Monitor",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal6,
 };
 /* Definitions for CLI */
@@ -1270,8 +1270,7 @@ void Start_V_Mon(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  //coll_cell_volt();//collects cell voltage every 1 second can be faster
-	  //a_d.VDisp=1;
+	  coll_cell_volt();//collects cell voltage every 1 second can be faster
 	  osDelay(1000);
   }
   /* USER CODE END Start_V_Mon */
@@ -1326,7 +1325,7 @@ void Start_V_Display(void *argument)
   for(;;)
   {
 	  //printf("boogers\r\n");
-	  if(a_d.VDisp == 1){
+	  if(a_d.VDisp == 5){//1
 		  printf("boogers\r\n");
 		  print_cells(0);//causes cli freeze why? if called anywhere else no cli freeze
 		  a_d.VDisp = 0;
