@@ -302,15 +302,10 @@ int main(void)
   a_d.hdac = &hdac;
   a_d.BMS_IC = BMS_IC;
   a_d.debug = 0;
-  a_d.v_max = 0;
-  a_d.v_min = 0;
-  a_d.v_avg = 0;
   a_d.Freq = 0;
   a_d.Duty = 0;
   a_d.stop_flag = 0;
   a_d.s_pin = 0;
-  a_d.cvnb;
-  a_d.tap = 0;
   a_d.max_curr = 10;
   //printf(" ad:%d reg:%d",a_d.max_curr,max_curr);
   a_d.max_cell_volt = 0;

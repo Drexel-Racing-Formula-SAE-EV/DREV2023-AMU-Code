@@ -440,6 +440,39 @@ void LTC6813_set_discharge(int Cell, // Cell to be discharged
 	}
 }
 
+/* Helper function to set discharge bit in CFG register */
+void LTC6813_set_discharge_per_segment(int Cell, // Cell to be discharged
+						   uint8_t segment, // Number of ICs in the system
+						   cell_asic *ic // A two dimensional array that will store the data
+						   )
+{
+	if (Cell==0)
+	{
+	  ic[segment].configb.tx_data[1] = ic[segment].configb.tx_data[1] |(0x04);
+	}
+	else if (Cell<9)
+	{
+	  ic[segment].config.tx_data[4] = ic[segment].config.tx_data[4] | (1<<(Cell-1));
+	}
+	else if (Cell < 13)
+	{
+	  ic[segment].config.tx_data[5] = ic[segment].config.tx_data[5] | (1<<(Cell-9));
+	}
+	else if (Cell<17)
+	{
+	  ic[segment].configb.tx_data[0] = ic[segment].configb.tx_data[0] | (1<<(Cell-9));
+	}
+	else if (Cell<19)
+	{
+	  ic[segment].configb.tx_data[1] = ic[segment].configb.tx_data[1] | (1<<(Cell-17));
+	}
+	else
+	{
+		;
+	}
+}
+
+
 /* Clears all of the DCC bits in the configuration registers */
 void LTC6813_clear_discharge(uint8_t total_ic, // Number of ICs in the system
                              cell_asic *ic // A two dimensional array that will store the data

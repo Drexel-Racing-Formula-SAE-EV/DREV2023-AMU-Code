@@ -356,6 +356,15 @@ void LTC6813_set_discharge(int Cell, //!< The cell to be discharged
 						   );
 
 /*!
+ Helper Function to Set DCC bits in the CFGR Registers
+ @return void
+ */
+void LTC6813_set_discharge_per_segment(int Cell, //!< The cell to be discharged
+                           uint8_t segment, //!< Number of ICs in the system
+                           cell_asic *ic //!< A two dimensional array that will store the data
+						   );
+
+/*!
  Helper Function to clear DCC bits in the CFGR Registers
  @return void
  */

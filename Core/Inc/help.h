@@ -179,6 +179,18 @@ typedef struct
 
 }ltcvar;
 
+typedef struct{
+	 uint16_t v_max;
+	 uint16_t v_min;
+	 uint16_t v_avg;
+
+	//cell voltage not balanced/too high array[18]
+	 uint8_t cvnb[18];
+	//track cvnb position for marking unbalanced cells
+	 uint8_t tap;
+	 uint8_t old_tap;
+}segment;
+
 typedef struct
 {
 	CAN_HandleTypeDef *hcan1;
@@ -200,6 +212,8 @@ typedef struct
 
 	cell_asic *BMS_IC;
 
+	segment seg[5];
+
 	ltcvar ltc;
 
 	 uint8_t stop_flag;
@@ -209,18 +223,10 @@ typedef struct
 	 float Duty;
 
 	 uint8_t debug;
-	//MEASURING
-	 uint16_t v_max;
-	 uint16_t v_min;
-	 uint16_t v_avg;
 
 	//BALANCING
 	//sets the discharge pin
 	 uint8_t s_pin;
-	//cell voltage not balanced/too high array[18]
-	 uint8_t cvnb[18];
-	//track cvnb position for marking unbalanced cells
-	 uint8_t tap;
 
 	//USER PARAMETERS
 	 float max_curr;

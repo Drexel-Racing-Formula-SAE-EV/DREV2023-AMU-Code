@@ -198,11 +198,29 @@ void display(uint8_t nargs, char **args){
 	if(nargs == 1){
 		if(strcmp(args[1], "overall") == 0){
 //Displays parameters of the battery: max temp of each segment, overall voltage, SoC, instantaneous current, state of AIR control, BMS safe / unsafe, calculated isolation from IMD
+			printf("	Temp of segment:\r\n");
+			for(int i = 0; i<TOTAL_IC;i++){
+				printf("		%d: %f",i+1,10.0);
+			}
+			printf("\r\n	Overall Volt\r\n");
+			printf("	Soc %d\r\n",10);
+			printf("	Current: %f\r\n",10.0);
+			printf("	AIR Control: %d\r\n",0);
+			if(1){
+				printf("	BMS Safe\r\n");
+			}
+			else{
+				printf("	BMS Unsafe\r\n");
+			}
+			printf("	IMD Isolation: %f\r\n",10.0);
 
 		}
 		else if(strcmp(args[1], "temp") == 0){
 //Displays max temp of each segment, body temp values for each segment, overall temp of the pack
-
+			printf("Temp of segment:\r\n");
+			for(int i = 0; i<TOTAL_IC;i++){
+				printf("		%d: %f",i+1,10.0);
+			}
 		}
 		else if(strcmp(args[1], "volt") == 0){
 //Display array of all voltages and overall voltage, updating 1/s
@@ -228,7 +246,7 @@ void display(uint8_t nargs, char **args){
 void edit_params(uint8_t nargs, char **args){
 	if(nargs == 2){
 		if(atoi(args[2])==0){
-			printf("incorrect 2nd argument input");
+			printf("incorrect 2nd argument input\r\n");
 		}
 		else{
 			if(strcmp(args[1], "MC") == 0){
@@ -274,7 +292,7 @@ void edit_params(uint8_t nargs, char **args){
 		}
 	}
 	else{
-		printf("Incorrect number of ARGS should be 2");
+		printf("Incorrect number of ARGS should be 2\r\n");
 	}
 }
 
@@ -307,7 +325,8 @@ void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs ca
 	uint32_t volt_total=0;
 	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
 	  {
-	    for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++){
+		volt_min=65535;volt_max=0;volt_avg=0;total_cells=0;
+	    for (int i=0; i<a_d->BMS_IC[current_ic].ic_reg.cell_channels; i++){
 	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);
 	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]==0);
 	    	else if(volt_min>a_d->BMS_IC[current_ic].cells.c_codes[i]){
@@ -322,14 +341,14 @@ void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs ca
 				total_cells++;
 	    	}
 	    }
+	    a_d->seg[current_ic].v_max = volt_max;
+		a_d->seg[current_ic].v_min = volt_min;
+	    volt_avg = volt_total/total_cells;
+		a_d->seg[current_ic].v_avg = volt_avg;
 	  }
     //printf("total cells: %d\r\n",total_cells);
-    volt_avg = volt_total/total_cells;
     //printf("volt total %d, volt_avg %d\r\n",volt_total,volt_avg);
     //printf("vmax: %d, vmin %d, vavg, %d\r\n",volt_max,volt_min,volt_avg);
-    a_d->v_max = volt_max;
-    a_d->v_min = volt_min;
-    a_d->v_avg = volt_avg;
 }
 
 //(uint8_t nargs, char **args) is causing everything to break... no clue why
@@ -400,31 +419,43 @@ void stop_balance(uint8_t nargs, char **args){
 void bal_all(uint8_t nargs, char **args){
 	//tracks taps previous position
 	uint8_t old_tap = 0;
+	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
+		a_d->seg[curr_ic].old_tap = 0;
+	}
 	//was balancing stopped? 0 yes 1 no
 	uint8_t stp = 0;
 	printf("Starting Balancing\r\n");
 	coll_cell_volt();
 	volt_calc(0,NULL);
-	printf("vmin: %d\r\n",a_d->v_min);
+	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
+		printf("seg: %d vmin: %d\r\n",curr_ic,a_d->seg[curr_ic].v_min);
+	}
 	coll_unbalanced_cells();
-	while(a_d->tap > 0){
+	while(a_d->seg[0].tap > 0||a_d->seg[1].tap > 0||a_d->seg[2].tap > 0||a_d->seg[3].tap > 0||a_d->seg[4].tap > 0){
 		if(stp == 0){//if balancing is not active
 			//turns on balancing for all pins above threshold
-			for(int i = 0; i<a_d->tap;i++){
-				a_d->s_pin = a_d->cvnb[i];
-				printf("sPIN: %d\r\n",a_d->s_pin);
-				cb_test();
+			for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
+				for(int i = 0; i<a_d->seg[curr_ic].tap;i++){
+					a_d->s_pin = a_d->seg[curr_ic].cvnb[i];
+					printf("sPIN: %d\r\n",a_d->s_pin);
+					bal_cell(curr_ic);
+					//cb_test();
+				}
 			}
-			HAL_Delay(1000);
-			stp = 1;
+				HAL_Delay(1000);
+				stp = 1;
 		}
-		old_tap = a_d->tap;
+
+		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
+			old_tap = a_d->seg[curr_ic].tap;
+		}
 		coll_unbalanced_cells();
 		//print_cells(DATALOG_DISABLED);
-
-		if(old_tap > a_d->tap){
-			stop_balance(0,NULL);
-			printf("1 cell finished! %d left",a_d->tap);
+		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
+			if(old_tap > a_d->seg[curr_ic].tap){
+				stop_balance(0,NULL);
+				printf("1 cell finished! %d left",a_d->seg[curr_ic].tap);
+			}
 		}
 		u_sleep(1500);//sleeps so other functions can continue
 		//osDelay(50);
@@ -433,17 +464,40 @@ void bal_all(uint8_t nargs, char **args){
 	coll_cell_volt();
 }
 
+void bal_cell(uint8_t segment){
+	s_pin_read = a_d->s_pin;
+    //s_pin_read = select_s_pin();
+    //s_pin_read = 4;
+    wakeup_sleep(TOTAL_IC);
+    //LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d->BMS_IC);
+    LTC6813_set_discharge_per_segment(s_pin_read,segment,a_d->BMS_IC);
+    LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
+    LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
+    print_wrconfig();
+    print_wrconfigb();
+    wakeup_idle(TOTAL_IC);
+    error = LTC6813_rdcfg(TOTAL_IC,a_d->BMS_IC);
+    check_error(error);
+    error = LTC6813_rdcfgb(TOTAL_IC,a_d->BMS_IC);
+    check_error(error);
+    print_rxconfig();
+    print_rxconfigb();
+}
+
 void coll_unbalanced_cells(void){
 	coll_cell_volt();
 	//print_cells(DATALOG_DISABLED);
-	a_d->tap = 0;
-	for (uint8_t j = 0; j<18; j++){
-		if(a_d->BMS_IC[0].cells.c_codes[j] >= (a_d->v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
-			a_d->cvnb[a_d->tap] = j;
-			a_d->tap += 1;
-			printf("j: %d tap %d, cvnb:%d\r\n",j,a_d->tap,a_d->cvnb[a_d->tap]);
+	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
+	  {
+		a_d->seg[current_ic].tap = 0;
+		for (uint8_t j = 0; j<18; j++){
+			if(a_d->BMS_IC[current_ic].cells.c_codes[j] >= (a_d->seg[current_ic].v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
+				a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap] = j;
+				a_d->seg[current_ic].tap += 1;
+				printf("j: %d tap %d, cvnb:%d\r\n",j,a_d->seg[current_ic].tap,a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap]);
+			}
 		}
-	}
+	  }
 }
 
 void temp_calc(uint8_t nargs, char **args){
@@ -495,7 +549,7 @@ void get_cell_data(uint8_t nargs, char **args){
 			\r\nTotal IC:    %d\
 			\r\nVolt Min:    %.04f\
 			\r\nVolt Max:    %.04f\
-			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,a_d->v_min*.0001,a_d->v_max*.0001,a_d->v_avg*.0001);
+			\r\nVolt Avg:    %.04f\r\n",0,TOTAL_IC,a_d->seg[0].v_min*.0001,a_d->seg[0].v_max*.0001,a_d->seg[0].v_avg*.0001);
 }
 
 void fan_control(uint8_t nargs, char **args){

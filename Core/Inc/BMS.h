@@ -47,6 +47,8 @@ void stop_balance(uint8_t nargs, char **args);
 
 void bal_all(uint8_t nargs, char **args);
 
+void bal_cell(uint8_t segment);
+
 void get_cell_data(uint8_t nargs, char **args);
 
 void coll_unbalanced_cells(void);
