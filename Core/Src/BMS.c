@@ -363,7 +363,10 @@ void coll_cell_volt(void){//uint8_t nargs, char **args){
     error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all cell voltage registers
     check_error(error);
     if(a_d->VDisp == 1){
-    	print_cells(DATALOG_DISABLED);
+    	if(__HAL_TIM_GET_COUNTER(a_d->htim8) > 1000){
+        	print_cells(DATALOG_DISABLED);
+        	__HAL_TIM_SET_COUNTER(a_d->htim8,0);
+    	}
     }
 }
 
@@ -438,7 +441,7 @@ void bal_all(uint8_t nargs, char **args){
 				for(int i = 0; i<a_d->seg[curr_ic].tap;i++){
 					a_d->s_pin = a_d->seg[curr_ic].cvnb[i];
 					printf("sPIN: %d\r\n",a_d->s_pin);
-					bal_cell(curr_ic);
+					bal_cell(curr_ic);//maybe change to have it set config prior to pushing config
 					//cb_test();
 				}
 			}

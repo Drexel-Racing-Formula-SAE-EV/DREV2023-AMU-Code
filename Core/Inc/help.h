@@ -84,7 +84,7 @@
 
 #define MSG_LEN 256//default 128
 
-#define TOTAL_IC 1//should be 5
+#define TOTAL_IC 5//should be 5
 
 /*! Cell Voltage data structure. */
 typedef struct
@@ -241,7 +241,13 @@ typedef struct
 
 	 uint8_t mode;
 
-	 int hall_current;
+	 volatile float hall_current;
+
+	 //set these flags to be only 1 bit somehow...
+	 volatile uint8_t temp_safe;
+	 volatile uint8_t volt_safe;
+	 volatile uint8_t curr_safe;
+
 
 } app_data;
 

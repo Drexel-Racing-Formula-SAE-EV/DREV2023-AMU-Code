@@ -67,6 +67,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
+TIM_HandleTypeDef htim10;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -126,6 +127,13 @@ const osThreadAttr_t HAL_CURR_COLL_attributes = {
   .name = "HAL_CURR_COLL",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for Safety_Check */
+osThreadId_t Safety_CheckHandle;
+const osThreadAttr_t Safety_Check_attributes = {
+  .name = "Safety_Check",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityHigh4,
 };
 /* Definitions for uart_mutex */
 osMutexId_t uart_mutexHandle;
@@ -189,6 +197,7 @@ static void MX_DAC_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM9_Init(void);
+static void MX_TIM10_Init(void);
 void Start_Temp_Mon(void *argument);
 void Start_V_Mon(void *argument);
 void CLI_START(void *argument);
@@ -197,6 +206,7 @@ void Start_Charging(void *argument);
 void Start_Discharging(void *argument);
 void Start_Balancing(void *argument);
 void Start_CURR_COLL(void *argument);
+void StartSafetyCheck(void *argument);
 
 /* USER CODE BEGIN PFP */
 PUTCHAR_PROTOTYPE
@@ -288,6 +298,7 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM8_Init();
   MX_TIM9_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
   a_d.hcan1 = &hcan1;
   a_d.hspi1 = &hspi2;//flip back
@@ -330,6 +341,7 @@ int main(void)
   HAL_TIM_Base_Start(&htim4);
   HAL_TIM_Base_Start(&htim8);
   HAL_TIM_Base_Start(&htim9);
+  HAL_TIM_Base_Start(&htim10);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
@@ -401,6 +413,9 @@ int main(void)
 
   /* creation of HAL_CURR_COLL */
   HAL_CURR_COLLHandle = osThreadNew(Start_CURR_COLL, NULL, &HAL_CURR_COLL_attributes);
+
+  /* creation of Safety_Check */
+  Safety_CheckHandle = osThreadNew(StartSafetyCheck, NULL, &Safety_Check_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1024,6 +1039,37 @@ static void MX_TIM9_Init(void)
 }
 
 /**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+  /* USER CODE BEGIN TIM10_Init 0 */
+
+  /* USER CODE END TIM10_Init 0 */
+
+  /* USER CODE BEGIN TIM10_Init 1 */
+
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 167;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 0;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
+
+  /* USER CODE END TIM10_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -1265,8 +1311,8 @@ void Start_V_Mon(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  coll_cell_volt();//collects cell voltage every 1 second can be faster
-	  osDelay(1000);
+	  coll_cell_volt();//collects cell voltage every .1 second can be faster
+	  osDelay(100);
   }
   /* USER CODE END Start_V_Mon */
 }
@@ -1354,15 +1400,18 @@ void Start_Charging(void *argument)
 		if(a_d.max_curr>0){
 			//ADC of hall effect-at pin PC1
 			if(a_d.hall_current>=a_d.max_curr+2){//check if pack current >= charge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
+				//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off charging
+				a_d.curr_safe = 0;
 
 			}
 			else{
 				//allow charging to continue - repeats the loop
+				a_d.curr_safe = 1;
 			}
 		}
 		else{
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
+			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);//turn off power input
+			a_d.curr_safe = 0;
 		}
 	}
     osDelay(1000);
@@ -1387,14 +1436,16 @@ void Start_Discharging(void *argument)
 		printf(" in dismode charge\r\n");
 		if(a_d.max_curr>0){
 			if(-(a_d.hall_current) > -(a_d.max_curr+1)){//check if pack current >= discharge current limit+xAmps(x=us defined threshold)
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
+				//HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
+				a_d.curr_safe = 0;
 			}
 			else{
-
+				a_d.curr_safe = 1;
 			}
 		}
 		else{
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
+			//HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
+			a_d.curr_safe = 0;
 		}
 	}
     osDelay(1000);
@@ -1438,7 +1489,7 @@ void Start_CURR_COLL(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  while(0){
+	  if(0){
 		  CSE4_RESET
 		  u_sleep(3);
 		  HAL_SPI_Receive(a_d.hspi1, (uint8_t *) spi_rx_buffer,2,100);
@@ -1447,9 +1498,34 @@ void Start_CURR_COLL(void *argument)
 		  printf("hal lvl:%.02x,%.02x",spi_rx_buffer[0],spi_rx_buffer[1]);
 		  a_d.hall_current = spi_rx_buffer[0]||spi_rx_buffer[1]>>8;
 	  }
-	  osDelay(1);
+	  osDelay(100);
   }
   /* USER CODE END Start_CURR_COLL */
+}
+
+/* USER CODE BEGIN Header_StartSafetyCheck */
+/**
+* @brief Function implementing the Safety_Check thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartSafetyCheck */
+void StartSafetyCheck(void *argument)
+{
+  /* USER CODE BEGIN StartSafetyCheck */
+  /* Infinite loop */
+  for(;;)
+  {
+	  if(a_d.temp_safe&&a_d.volt_safe&&a_d.curr_safe){
+		  ;
+	  }
+	  else{
+		  //set AIR to shutdown -
+		  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
+	  }
+    osDelay(10);
+  }
+  /* USER CODE END StartSafetyCheck */
 }
 
 /**
