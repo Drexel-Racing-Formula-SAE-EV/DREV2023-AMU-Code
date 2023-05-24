@@ -84,7 +84,7 @@
 
 #define MSG_LEN 256//default 128
 
-#define TOTAL_IC 5//should be 5
+#define TOTAL_IC 1//should be 5
 
 /*! Cell Voltage data structure. */
 typedef struct
@@ -183,6 +183,7 @@ typedef struct{
 	 uint16_t v_max;
 	 uint16_t v_min;
 	 uint16_t v_avg;
+	 uint32_t v_tot;
 
 	//cell voltage not balanced/too high array[18]
 	 uint8_t cvnb[18];
@@ -205,6 +206,8 @@ typedef struct
 	TIM_HandleTypeDef *htim4;
 	TIM_HandleTypeDef *htim8;
 	TIM_HandleTypeDef *htim9;
+	TIM_HandleTypeDef *htim10;
+	TIM_HandleTypeDef *htim12;
 
 	DMA_HandleTypeDef *hdma_usart2_rx;
 
@@ -238,6 +241,7 @@ typedef struct
 	 uint8_t min_soc;
 
 	 uint8_t VDisp;
+	 uint8_t shutdown;
 
 	 uint8_t mode;
 

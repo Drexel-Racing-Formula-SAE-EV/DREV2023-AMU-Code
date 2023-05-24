@@ -39,6 +39,8 @@ void coll_cell_volt(void);
 
 void temp_calc(uint8_t nargs, char **args);
 
+void temp_test(void);
+
 void volt_calc(uint8_t nargs, char **args);
 
 void cb_test(void);
@@ -69,6 +71,8 @@ void discharge_mode();
 
 void vmon();
 
+void shutdown();
+
 void print_conv_time(uint32_t conv_time);
 
 void check_error(int error);
@@ -82,6 +86,8 @@ void print_wrconfigb(void);
 void print_rxconfig(void);
 
 void print_rxconfigb(void);
+
+void print_aux(uint8_t datalog_en);
 
 
 

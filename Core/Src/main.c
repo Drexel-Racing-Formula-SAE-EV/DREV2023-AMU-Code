@@ -68,6 +68,7 @@ TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim8;
 TIM_HandleTypeDef htim9;
 TIM_HandleTypeDef htim10;
+TIM_HandleTypeDef htim12;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -198,6 +199,7 @@ static void MX_TIM4_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM9_Init(void);
 static void MX_TIM10_Init(void);
+static void MX_TIM12_Init(void);
 void Start_Temp_Mon(void *argument);
 void Start_V_Mon(void *argument);
 void CLI_START(void *argument);
@@ -235,10 +237,10 @@ int main(void)
 	a_d.ltc.REFON = 1; //!< Reference Powered Up Bit
 	a_d.ltc.ADCOPT = 0; //!< ADC Mode option bit
 	//!< GPIO Pin Control // Gpio 1,2,3,4,5
-	a_d.ltc.GPIOBITS_A[0] = 0;a_d.ltc.GPIOBITS_A[1] = 0;a_d.ltc.GPIOBITS_A[2] = 1;a_d.ltc.GPIOBITS_A[3] = 0;a_d.ltc.GPIOBITS_A[4] = 1;
+	a_d.ltc.GPIOBITS_A[0] = 1;a_d.ltc.GPIOBITS_A[1] = 1;a_d.ltc.GPIOBITS_A[2] = 1;a_d.ltc.GPIOBITS_A[3] = 1;a_d.ltc.GPIOBITS_A[4] = 1;
 	//!< GPIO Pin Control // Gpio 6,7,8,9
 	for(int i = 0; i<4;i++){
-		a_d.ltc.GPIOBITS_B[i]=0;
+		a_d.ltc.GPIOBITS_B[i]=1;
 	}
 	a_d.ltc.UV=a_d.ltc.UV_THRESHOLD; //!< Under voltage Comparison Voltage
 	a_d.ltc.OV=a_d.ltc.OV_THRESHOLD; //!< Over voltage Comparison Voltage
@@ -299,6 +301,7 @@ int main(void)
   MX_TIM8_Init();
   MX_TIM9_Init();
   MX_TIM10_Init();
+  MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
   a_d.hcan1 = &hcan1;
   a_d.hspi1 = &hspi2;//flip back
@@ -310,6 +313,8 @@ int main(void)
   a_d.htim4 = &htim4;
   a_d.htim8 = &htim8;
   a_d.htim9 = &htim9;
+  a_d.htim10 = &htim10;
+  a_d.htim12 = &htim12;
   a_d.hdac = &hdac;
   a_d.BMS_IC = BMS_IC;
   a_d.debug = 0;
@@ -326,6 +331,7 @@ int main(void)
   a_d.max_soc = 0;
   a_d.min_soc = 0;
   a_d.VDisp = 0;
+  a_d.shutdown = 0;
   a_d.mode = 127;
   printf(" ad:%d reg:%d\r\n",a_d.mode,127);
   a_d.hall_current = 0;
@@ -342,6 +348,7 @@ int main(void)
   HAL_TIM_Base_Start(&htim8);
   HAL_TIM_Base_Start(&htim9);
   HAL_TIM_Base_Start(&htim10);
+  HAL_TIM_Base_Start(&htim12);
 
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
@@ -1056,7 +1063,7 @@ static void MX_TIM10_Init(void)
   htim10.Instance = TIM10;
   htim10.Init.Prescaler = 167;
   htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim10.Init.Period = 0;
+  htim10.Init.Period = 65535;
   htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
@@ -1066,6 +1073,44 @@ static void MX_TIM10_Init(void)
   /* USER CODE BEGIN TIM10_Init 2 */
 
   /* USER CODE END TIM10_Init 2 */
+
+}
+
+/**
+  * @brief TIM12 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM12_Init(void)
+{
+
+  /* USER CODE BEGIN TIM12_Init 0 */
+
+  /* USER CODE END TIM12_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+
+  /* USER CODE BEGIN TIM12_Init 1 */
+
+  /* USER CODE END TIM12_Init 1 */
+  htim12.Instance = TIM12;
+  htim12.Init.Prescaler = 16800;
+  htim12.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim12.Init.Period = 65535;
+  htim12.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim12.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim12) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim12, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM12_Init 2 */
+
+  /* USER CODE END TIM12_Init 2 */
 
 }
 
@@ -1293,7 +1338,8 @@ void Start_Temp_Mon(void *argument)
 	  if(a_d.debug != 0){
 		  a_d.debug=0;
 	  }
-    osDelay(500);
+	  while(a_d.shutdown){osDelay(1000);};
+	  osDelay(500);
   }
   /* USER CODE END 5 */
 }
@@ -1312,7 +1358,8 @@ void Start_V_Mon(void *argument)
   for(;;)
   {
 	  coll_cell_volt();//collects cell voltage every .1 second can be faster
-	  osDelay(100);
+	  while(a_d.shutdown){osDelay(1000);};
+	  osDelay(100);//change to 100 if not less
   }
   /* USER CODE END Start_V_Mon */
 }
@@ -1498,6 +1545,7 @@ void Start_CURR_COLL(void *argument)
 		  printf("hal lvl:%.02x,%.02x",spi_rx_buffer[0],spi_rx_buffer[1]);
 		  a_d.hall_current = spi_rx_buffer[0]||spi_rx_buffer[1]>>8;
 	  }
+	  while(a_d.shutdown){osDelay(1000);};
 	  osDelay(100);
   }
   /* USER CODE END Start_CURR_COLL */

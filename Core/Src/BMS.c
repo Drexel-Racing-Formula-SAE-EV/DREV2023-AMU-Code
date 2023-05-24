@@ -328,21 +328,25 @@ void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs ca
 		volt_min=65535;volt_max=0;volt_avg=0;total_cells=0;
 	    for (int i=0; i<a_d->BMS_IC[current_ic].ic_reg.cell_channels; i++){
 	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);
-	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]==0);
+
+	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]<=10000);
 	    	else if(volt_min>a_d->BMS_IC[current_ic].cells.c_codes[i]){
 	    		volt_min = a_d->BMS_IC[current_ic].cells.c_codes[i];
 	    	}
-	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]==0);
+
+	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]==65535||a_d->BMS_IC[current_ic].cells.c_codes[i]<=10000);
 	    	else if(volt_max<a_d->BMS_IC[current_ic].cells.c_codes[i]){
 	    		volt_max=a_d->BMS_IC[current_ic].cells.c_codes[i];
 	    	}
-	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]!=65535&&a_d->BMS_IC[current_ic].cells.c_codes[i]!=0){
+
+	    	if(a_d->BMS_IC[current_ic].cells.c_codes[i]!=65535&&a_d->BMS_IC[current_ic].cells.c_codes[i]>=10000){
 				volt_total += a_d->BMS_IC[current_ic].cells.c_codes[i];
 				total_cells++;
 	    	}
 	    }
 	    a_d->seg[current_ic].v_max = volt_max;
 		a_d->seg[current_ic].v_min = volt_min;
+		a_d->seg[current_ic].v_tot = volt_total;
 	    volt_avg = volt_total/total_cells;
 		a_d->seg[current_ic].v_avg = volt_avg;
 	  }
@@ -363,9 +367,12 @@ void coll_cell_volt(void){//uint8_t nargs, char **args){
     error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all cell voltage registers
     check_error(error);
     if(a_d->VDisp == 1){
-    	if(__HAL_TIM_GET_COUNTER(a_d->htim8) > 1000){
+    	//printf("%d,\r\n",__HAL_TIM_GET_COUNTER(a_d->htim12));
+    	if(__HAL_TIM_GET_COUNTER(a_d->htim12) > 10000){
+    		volt_calc(0,NULL);
         	print_cells(DATALOG_DISABLED);
-        	__HAL_TIM_SET_COUNTER(a_d->htim8,0);
+        	__HAL_TIM_SET_COUNTER(a_d->htim12,0);
+        	printf("\r\n\r\n");
     	}
     }
 }
@@ -440,7 +447,7 @@ void bal_all(uint8_t nargs, char **args){
 			for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
 				for(int i = 0; i<a_d->seg[curr_ic].tap;i++){
 					a_d->s_pin = a_d->seg[curr_ic].cvnb[i];
-					printf("sPIN: %d\r\n",a_d->s_pin);
+					//printf("sPIN: %d\r\n",a_d->s_pin);
 					bal_cell(curr_ic);//maybe change to have it set config prior to pushing config
 					//cb_test();
 				}
@@ -497,53 +504,64 @@ void coll_unbalanced_cells(void){
 			if(a_d->BMS_IC[current_ic].cells.c_codes[j] >= (a_d->seg[current_ic].v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
 				a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap] = j;
 				a_d->seg[current_ic].tap += 1;
-				printf("j: %d tap %d, cvnb:%d\r\n",j,a_d->seg[current_ic].tap,a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap]);
+				//printf("j: %d tap %d, cvnb:%d\r\n",j,a_d->seg[current_ic].tap,a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap]);
 			}
 		}
 	  }
+}
+
+void temp_test(void){
+
+	temp_calc(0,NULL);
+
+	//for testing read T Cell 14... on mux 00
+	for(int i = 0; i<4; i++){
+		wakeup_sleep(TOTAL_IC);
+		LTC6813_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
+		conv_time = LTC6813_pollAdc();
+		print_conv_time(conv_time);
+		wakeup_sleep(TOTAL_IC);
+		error = LTC6813_rdaux(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all aux registers
+		check_error(error);
+		print_aux(DATALOG_DISABLED);
+		osDelay(1000);
+	}
 }
 
 void temp_calc(uint8_t nargs, char **args){
     /************************************************************
       Ensure to set the GPIO bits to 1 in the CFG register group.
     *************************************************************/
-	uint8_t adgid = 0b1001100;
-	printf("%x",adgid);
+	//5 MSB is idetnifier for mux 2 lsb is identifier of specific mux last bit signifies write or read
+	//uint8_t adgid = 0b10011000;
+	//printf("%x",adgid);
     for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
     {
       //Communication control bits and communication data bytes. Refer to the data sheet.
-		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
+		/*a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00; // Icom Blank (0) + eeprom address(word address) D1 (0x00)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x6A; // Icom Start (6) + I2C_address D2 (0xA1)(Read operation)
 		a_d->BMS_IC[current_ic].com.tx_data[5]= 0x18; // Fcom master NACK(8)
+    */
+        a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
+        a_d->BMS_IC[current_ic].com.tx_data[1]= 0x88;//1000 + master NACK(8)
+        a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
+        a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
+        a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
+        a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
     }
     wakeup_sleep(TOTAL_IC);
     LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm register
 
     wakeup_idle(TOTAL_IC);
-    LTC6813_stcomm(3); // data length=3 // initiates communication between master and the I2C slave
-
-    for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
-    {
-      //Communication control bits and communication data bytes. Refer to the data sheet.
-		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x0F; // Icom Blank (0) + data D0 (FF)
-		a_d->BMS_IC[current_ic].com.tx_data[1]= 0xF9; // Fcom master NACK + Stop(9)
-		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x7F; // Icom No Transmit (7) + data D1 (FF)
-		a_d->BMS_IC[current_ic].com.tx_data[3]= 0xF9; // Fcom master NACK + Stop(9)
-		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F; // Icom No Transmit (7) + data D2 (FF)
-		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9; // Fcom master NACK + Stop(9)
-    }
-    wakeup_idle(TOTAL_IC);
-    LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm register
-
-    wakeup_idle(TOTAL_IC);
-    LTC6813_stcomm(1); // data length=1 // initiates communication between master and the I2C slave
+    LTC6813_stcomm(2); // data length=3 // initiates communication between master and the I2C slave
 
     wakeup_idle(TOTAL_IC);
     error = LTC6813_rdcomm(TOTAL_IC,a_d->BMS_IC); // read from comm register
     check_error(error);
+    print_wrcomm();
     print_rxcomm(); // print received data from the comm register
 }
 
@@ -700,6 +718,13 @@ void vmon(){
 	a_d->VDisp = 1;
 }
 
+void shutdown(){
+	a_d->shutdown = 1;
+	a_d->mode = 127;
+	stop_balance(0,NULL);
+	printf("Ready to shutdown\r\n");
+}
+
 /*!******************************************************************************
  \brief Prints the configuration data that is going to be written to the LTC6813
  to the serial port.
@@ -827,35 +852,32 @@ void print_cells(uint8_t datalog_en)
   {
     if (datalog_en == 0)
     {
-      //Serial.print(" IC ");
-      //Serial.print(current_ic+1,DEC);
-      //Serial.print(", ");
-      printf(" IC %d,",current_ic+1);
-      for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++)
+      printf("\r\n	----------------------------------------");
+      printf("\r\n	| vmin: %d || vmax: %d || vtot: %lu |",a_d->seg[current_ic].v_min,a_d->seg[current_ic].v_max,a_d->seg[current_ic].v_tot);
+      printf("\r\n	----------------------------------------\r\n");
+      printf("	--------\r\n");
+      printf("	| IC %d |",current_ic+1);
+      printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n	");
+      for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels/2; i++)
       {
-        //Serial.print(" C");
-        //Serial.print(i+1,DEC);
-        //Serial.print(":");
-        //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
-        //Serial.print(",");
-        printf(" C%d:%.4f,",i+1,a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+        printf("| C%d:%.4f  |",i+1,a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
       }
-      //Serial.println();
-      printf("\r\n");
+      printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n	");
+      for (int i=a_d->BMS_IC[0].ic_reg.cell_channels/2; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++)
+      {
+        printf("| C%d:%.4f |",i+1,a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
+      }
+      printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n");
     }
     else
     {
-      //Serial.print(" Cells, ");
       printf(" Cells, ");
       for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++)
       {
-        //Serial.print(BMS_IC[current_ic].cells.c_codes[i]*0.0001,4);
-        //Serial.print(",");
         printf("%f,",a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
       }
     }
   }
-  //Serial.println("\n");
   //printf("\r\n");
 }
 

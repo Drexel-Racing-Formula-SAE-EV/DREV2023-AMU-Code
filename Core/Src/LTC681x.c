@@ -2039,7 +2039,7 @@ void LTC681x_stcomm(uint8_t len) //Length of data to be transmitted
 	  spi_read_byte(0xFF);
 	}
 	//printf("stcomm rx len: %d\r\n",len);
-	u_sleep(50);
+	u_sleep(75);
 	LTC_6813_CS_SET
 }
 

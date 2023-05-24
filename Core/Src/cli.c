@@ -49,6 +49,7 @@ static const sc_command console_commands[] = {
 	{"spil", "Spi Loopback", spi_loopback},
 	{"dcd", "Displays Cell Data", get_cell_data},
 	{"ccv", "Collects Cell Voltage", coll_cell_volt},
+	{"temp", "temp test", temp_test},
 	{"vc", "Calculates Voltage", volt_calc},
 	{"fc", "Controls Fan", fan_control},
 	{"cant", "Can Test", can_test},
@@ -57,7 +58,8 @@ static const sc_command console_commands[] = {
 	{"dact", "DAC TEST WARNING INFINITE", dac_test},
 	{"cbt", "Cell Balancing Test", cb_test},
 	{"bal", "Balance All Cells in a Segment", bal_all},
-	{"sb", "Stops All Cell Balancing", stop_balance}
+	{"sb", "Stops All Cell Balancing", stop_balance},
+	{"shutdown", "Stops all Tasks Including Balancing For System Shutdown", shutdown}
 };
 
 uint8_t m2mOn = 0;
