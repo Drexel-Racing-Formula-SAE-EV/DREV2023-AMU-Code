@@ -16,6 +16,8 @@
 //#include "LTC681x.h"
 //#include "main.h" // need to move implicit declares in main.c/h to help.h!!
 
+#define TOTAL_IC 1//should be 5
+
 //DEFINE GPIO's
 #define CSA4_RESET HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 #define CSA4_SET HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
@@ -83,8 +85,6 @@
 #define ARGS_COUNT_MAX 8
 
 #define MSG_LEN 256//default 128
-
-#define TOTAL_IC 1//should be 5
 
 /*! Cell Voltage data structure. */
 typedef struct
@@ -237,6 +237,7 @@ typedef struct
 	 float min_cell_volt;
 	 float max_sys_volt;
 	 float min_sys_volt;
+	 float max_temp;
 	 uint8_t max_soc;
 	 uint8_t min_soc;
 

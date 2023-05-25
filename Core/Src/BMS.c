@@ -366,10 +366,11 @@ void coll_cell_volt(void){//uint8_t nargs, char **args){
     wakeup_sleep(TOTAL_IC);
     error = LTC6813_rdcv(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all cell voltage registers
     check_error(error);
+	volt_calc(0,NULL);
     if(a_d->VDisp == 1){
     	//printf("%d,\r\n",__HAL_TIM_GET_COUNTER(a_d->htim12));
     	if(__HAL_TIM_GET_COUNTER(a_d->htim12) > 10000){
-    		volt_calc(0,NULL);
+    		//volt_calc(0,NULL);
         	print_cells(DATALOG_DISABLED);
         	__HAL_TIM_SET_COUNTER(a_d->htim12,0);
         	printf("\r\n\r\n");
@@ -428,19 +429,19 @@ void stop_balance(uint8_t nargs, char **args){
  */
 void bal_all(uint8_t nargs, char **args){
 	//tracks taps previous position
-	uint8_t old_tap = 0;
+	uint8_t old_tap[TOTAL_IC] = {0};
 	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
 		a_d->seg[curr_ic].old_tap = 0;
 	}
 	//was balancing stopped? 0 yes 1 no
 	uint8_t stp = 0;
 	printf("Starting Balancing\r\n");
-	coll_cell_volt();
-	volt_calc(0,NULL);
+	//coll_cell_volt();
+	//volt_calc(0,NULL);
+	coll_unbalanced_cells();
 	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
 		printf("seg: %d vmin: %d\r\n",curr_ic,a_d->seg[curr_ic].v_min);
 	}
-	coll_unbalanced_cells();
 	while(a_d->seg[0].tap > 0||a_d->seg[1].tap > 0||a_d->seg[2].tap > 0||a_d->seg[3].tap > 0||a_d->seg[4].tap > 0){
 		if(stp == 0){//if balancing is not active
 			//turns on balancing for all pins above threshold
@@ -448,22 +449,25 @@ void bal_all(uint8_t nargs, char **args){
 				for(int i = 0; i<a_d->seg[curr_ic].tap;i++){
 					a_d->s_pin = a_d->seg[curr_ic].cvnb[i];
 					//printf("sPIN: %d\r\n",a_d->s_pin);
-					bal_cell(curr_ic);//maybe change to have it set config prior to pushing config
+					LTC6813_set_discharge_per_segment(a_d->s_pin,curr_ic,a_d->BMS_IC);
+					//bal_cell(curr_ic);//maybe change to have it set config prior to pushing config
 					//cb_test();
 				}
 			}
-				HAL_Delay(1000);
+				bal_cell(0);
+				osDelay(1000);
 				stp = 1;
 		}
 
 		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
-			old_tap = a_d->seg[curr_ic].tap;
+			old_tap[curr_ic] = a_d->seg[curr_ic].tap;
 		}
 		coll_unbalanced_cells();
 		//print_cells(DATALOG_DISABLED);
 		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
-			if(old_tap > a_d->seg[curr_ic].tap){
+			if(old_tap[curr_ic] > a_d->seg[curr_ic].tap){
 				stop_balance(0,NULL);
+				stp = 0;
 				printf("1 cell finished! %d left",a_d->seg[curr_ic].tap);
 			}
 		}
@@ -480,7 +484,7 @@ void bal_cell(uint8_t segment){
     //s_pin_read = 4;
     wakeup_sleep(TOTAL_IC);
     //LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d->BMS_IC);
-    LTC6813_set_discharge_per_segment(s_pin_read,segment,a_d->BMS_IC);
+    //LTC6813_set_discharge_per_segment(s_pin_read,segment,a_d->BMS_IC);
     LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
     LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
     print_wrconfig();
@@ -500,7 +504,7 @@ void coll_unbalanced_cells(void){
 	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
 	  {
 		a_d->seg[current_ic].tap = 0;
-		for (uint8_t j = 0; j<18; j++){
+		for (uint8_t j = 0; j<18; j++){//create loop if voltage equals 65535 rerun coll_cell_volt
 			if(a_d->BMS_IC[current_ic].cells.c_codes[j] >= (a_d->seg[current_ic].v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
 				a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap] = j;
 				a_d->seg[current_ic].tap += 1;
@@ -538,22 +542,44 @@ void temp_calc(uint8_t nargs, char **args){
     for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
     {
       //Communication control bits and communication data bytes. Refer to the data sheet.
-		/*a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00; // Icom Blank (0) + eeprom address(word address) D1 (0x00)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x6A; // Icom Start (6) + I2C_address D2 (0xA1)(Read operation)
 		a_d->BMS_IC[current_ic].com.tx_data[5]= 0x18; // Fcom master NACK(8)
-    */
-        a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
+
+	     wakeup_sleep(TOTAL_IC);
+	      LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm register
+
+	      wakeup_idle(TOTAL_IC);
+	      LTC6813_stcomm(3);
+	      //old
+        /*a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
         a_d->BMS_IC[current_ic].com.tx_data[1]= 0x88;//1000 + master NACK(8)
         a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
         a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
         a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
         a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
+        */
+        //new
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x09;//Icom Start(6) + 1001(0x9)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x88;//1000 + master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
+		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
+		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
+
+        /*
+        a_d->BMS_IC[current_ic].com.tx_data[0]= 0b01101001;//Icom Start(6) + 1001(0x9)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0b10001000;//1000 + master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[2]= 0b00000100;//blank + 0100(only 7 on)
+		a_d->BMS_IC[current_ic].com.tx_data[3]= 0b00001001;//0000(4-1 off mux channel) + master NACK(8)+stop
+		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;*/
     }
     wakeup_sleep(TOTAL_IC);
-    LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm register
+    LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm registter
 
     wakeup_idle(TOTAL_IC);
     LTC6813_stcomm(2); // data length=3 // initiates communication between master and the I2C slave
@@ -852,9 +878,9 @@ void print_cells(uint8_t datalog_en)
   {
     if (datalog_en == 0)
     {
-      printf("\r\n	----------------------------------------");
+      printf("\r\n	-------------------------------------");
       printf("\r\n	| vmin: %d || vmax: %d || vtot: %lu |",a_d->seg[current_ic].v_min,a_d->seg[current_ic].v_max,a_d->seg[current_ic].v_tot);
-      printf("\r\n	----------------------------------------\r\n");
+      printf("\r\n	-------------------------------------\r\n");
       printf("	--------\r\n");
       printf("	| IC %d |",current_ic+1);
       printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n	");

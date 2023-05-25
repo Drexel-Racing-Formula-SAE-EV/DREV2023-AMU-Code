@@ -324,10 +324,13 @@ int main(void)
   a_d.s_pin = 0;
   a_d.max_curr = 10;
   //printf(" ad:%d reg:%d",a_d.max_curr,max_curr);
-  a_d.max_cell_volt = 0;
-  a_d.min_cell_volt = 0;
-  a_d.max_sys_volt = 0;
-  a_d.min_sys_volt = 0;
+  a_d.max_cell_volt = 4.2;
+  a_d.min_cell_volt = 2.5;
+  a_d.max_sys_volt = a_d.max_cell_volt*24;
+  a_d.min_sys_volt = a_d.min_cell_volt*24;
+  a_d.temp_safe = 1;
+  a_d.volt_safe = 1;
+  a_d.curr_safe = 1;
   a_d.max_soc = 0;
   a_d.min_soc = 0;
   a_d.VDisp = 0;
@@ -1333,13 +1336,14 @@ void Start_Temp_Mon(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  //printf("hi\r\n");
-	 // printf(" debug:%d\r\n",a_d.debug);
-	  if(a_d.debug != 0){
-		  a_d.debug=0;
+	  if(0 > a_d.max_temp){
+		  a_d.temp_safe = 0;
+	  }
+	  else{
+		  a_d.temp_safe = 1;
 	  }
 	  while(a_d.shutdown){osDelay(1000);};
-	  osDelay(500);
+	  osDelay(200);
   }
   /* USER CODE END 5 */
 }
@@ -1357,7 +1361,14 @@ void Start_V_Mon(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	  //always checks if below minimum - only during charging mode does it check if voltage to high
 	  coll_cell_volt();//collects cell voltage every .1 second can be faster
+		if(a_d.seg[0].v_min > a_d.min_cell_volt){//update to do for all segments
+			a_d.volt_safe = 1;
+		}
+		else{
+			a_d.volt_safe = 0;
+		}
 	  while(a_d.shutdown){osDelay(1000);};
 	  osDelay(100);//change to 100 if not less
   }
@@ -1564,12 +1575,11 @@ void StartSafetyCheck(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	  if(a_d.temp_safe&&a_d.volt_safe&&a_d.curr_safe){
-		  ;
-	  }
+	  if(a_d.temp_safe&&a_d.volt_safe&&a_d.curr_safe){;}
 	  else{
 		  //set AIR to shutdown -
 		  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_RESET);//turn off power output
+		  printf("NOT SAFE\r\n");
 	  }
     osDelay(10);
   }
