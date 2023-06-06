@@ -306,7 +306,9 @@ void chg_mode(uint8_t nargs, char **args){
 		}
 		else if(strcmp(args[1], "balance") == 0){
 			//mode = balance;
-			bal_all(0,NULL);
+			balancing_mode();
+			//bal_mode(0,NULL);
+			//bal_all(0,NULL);
 		}
 		else if(strcmp(args[1], "no") == 0){
 			a_d->mode = 127;
@@ -395,15 +397,16 @@ void cb_test(void){//uint8_t nargs, char **args){
     LTC6813_set_discharge(s_pin_read,TOTAL_IC,a_d->BMS_IC);
     LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
     LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
-    print_wrconfig();
-    print_wrconfigb();
+    //print_wrconfig();
+    //print_wrconfigb();
     wakeup_idle(TOTAL_IC);
     error = LTC6813_rdcfg(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
     error = LTC6813_rdcfgb(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
-    print_rxconfig();
-    print_rxconfigb();
+    //print_rxconfig();
+    //print_rxconfigb();
+    printf("Discharging Cell: %d\r\n",s_pin_read);
 }
 
 void stop_balance(uint8_t nargs, char **args){
@@ -411,15 +414,15 @@ void stop_balance(uint8_t nargs, char **args){
     LTC6813_clear_discharge(TOTAL_IC,a_d->BMS_IC);
     LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
     LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
-    print_wrconfig();
-    print_wrconfigb();
+    //print_wrconfig();
+    //print_wrconfigb();
     wakeup_idle(TOTAL_IC);
     error = LTC6813_rdcfg(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
     error = LTC6813_rdcfgb(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
-    print_rxconfig();
-    print_rxconfigb();
+    //print_rxconfig();
+    //print_rxconfigb();
     printf("balance stopped\r\n");
 }
 
@@ -429,9 +432,11 @@ void stop_balance(uint8_t nargs, char **args){
  */
 void bal_all(uint8_t nargs, char **args){
 	//tracks taps previous position
-	uint8_t old_tap[TOTAL_IC] = {0};
+	//uint8_t old_tap[TOTAL_IC] = {0};
 	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
 		a_d->seg[curr_ic].old_tap = 0;
+		a_d->seg[curr_ic].tap = 0;
+		a_d->seg[curr_ic].old_mask = 65535;//16 cells active
 	}
 	//was balancing stopped? 0 yes 1 no
 	uint8_t stp = 0;
@@ -442,39 +447,58 @@ void bal_all(uint8_t nargs, char **args){
 	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
 		printf("seg: %d vmin: %d\r\n",curr_ic,a_d->seg[curr_ic].v_min);
 	}
-	while(a_d->seg[0].tap > 0||a_d->seg[1].tap > 0||a_d->seg[2].tap > 0||a_d->seg[3].tap > 0||a_d->seg[4].tap > 0){
+
+	//while(a_d->seg[0].tap > 0||a_d->seg[1].tap > 0||a_d->seg[2].tap > 0||a_d->seg[3].tap > 0||a_d->seg[4].tap > 0){
+	while(a_d->seg[0].volt_mask>0||a_d->seg[1].volt_mask>0||a_d->seg[2].volt_mask>0||a_d->seg[3].volt_mask>0||a_d->seg[4].volt_mask>0){
 		if(stp == 0){//if balancing is not active
 			//turns on balancing for all pins above threshold
 			for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
-				for(int i = 0; i<a_d->seg[curr_ic].tap;i++){
+				/*for(int i = 0; i<a_d->seg[curr_ic].tap;i++){
 					a_d->s_pin = a_d->seg[curr_ic].cvnb[i];
 					//printf("sPIN: %d\r\n",a_d->s_pin);
 					LTC6813_set_discharge_per_segment(a_d->s_pin,curr_ic,a_d->BMS_IC);
 					//bal_cell(curr_ic);//maybe change to have it set config prior to pushing config
 					//cb_test();
+				}*/
+				printf("Discharging: ");
+				for(int i = 0; i<18;i++){
+					if((a_d->seg[curr_ic].volt_mask>>i)&1){
+						printf("%d,",i+1);
+						a_d->s_pin = i+1;
+						LTC6813_set_discharge_per_segment(a_d->s_pin,curr_ic,a_d->BMS_IC);
+					}
 				}
 			}
+				//writes config for each cell to be balanced
+				printf("\r\nBalancing's a go\r\n");
 				bal_cell(0);
 				osDelay(1000);
 				stp = 1;
 		}
 
 		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
-			old_tap[curr_ic] = a_d->seg[curr_ic].tap;
+			//old_tap[curr_ic] = a_d->seg[curr_ic].tap;
+			//a_d->seg[curr_ic].old_tap = a_d->seg[curr_ic].tap;
+			a_d->seg[curr_ic].old_mask = a_d->seg[curr_ic].volt_mask;
 		}
+		//printf("old tap: %d\r\nnew tap: %d\r\n",old_tap[0],a_d->seg[0].tap);
 		coll_unbalanced_cells();
+		//printf("old tap: %d\r\nnew tap: %d\r\n",old_tap[0],a_d->seg[0].tap);
 		//print_cells(DATALOG_DISABLED);
 		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
-			if(old_tap[curr_ic] > a_d->seg[curr_ic].tap){
+			//if(old_tap[curr_ic] > a_d->seg[curr_ic].tap){
+			if(a_d->seg[curr_ic].old_mask != a_d->seg[curr_ic].volt_mask){
 				stop_balance(0,NULL);
 				stp = 0;
 				printf("1 cell finished! %d left",a_d->seg[curr_ic].tap);
+				//printf("old tap: %d\r\nnew tap: %d\r\n",old_tap[curr_ic],a_d->seg[curr_ic].tap);
 			}
 		}
 		u_sleep(1500);//sleeps so other functions can continue
 		//osDelay(50);
 	}
-	printf("Balancing Done\r\n");
+	printf("\r\nBalancing Done\r\n");
+	a_d->mode = 127;
 	coll_cell_volt();
 }
 
@@ -487,31 +511,44 @@ void bal_cell(uint8_t segment){
     //LTC6813_set_discharge_per_segment(s_pin_read,segment,a_d->BMS_IC);
     LTC6813_wrcfg(TOTAL_IC,a_d->BMS_IC);
     LTC6813_wrcfgb(TOTAL_IC,a_d->BMS_IC);
-    print_wrconfig();
-    print_wrconfigb();
+    //print_wrconfig();
+    //print_wrconfigb();
     wakeup_idle(TOTAL_IC);
     error = LTC6813_rdcfg(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
     error = LTC6813_rdcfgb(TOTAL_IC,a_d->BMS_IC);
     check_error(error);
-    print_rxconfig();
-    print_rxconfigb();
+    //print_rxconfig();
+    //print_rxconfigb();
 }
 
 void coll_unbalanced_cells(void){
 	coll_cell_volt();
 	//print_cells(DATALOG_DISABLED);
-	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
-	  {
-		a_d->seg[current_ic].tap = 0;
+	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++){
+		//a_d->seg[current_ic].tap = 0;
+		a_d->seg[current_ic].volt_mask = 0;
 		for (uint8_t j = 0; j<18; j++){//create loop if voltage equals 65535 rerun coll_cell_volt
 			if(a_d->BMS_IC[current_ic].cells.c_codes[j] >= (a_d->seg[current_ic].v_min)+100){//ex 3.5v = 35000 so adding .05v=500 to leeway to balancing
-				a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap] = j;
-				a_d->seg[current_ic].tap += 1;
+				//a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap] = j;
+				//a_d->seg[current_ic].tap += 1;
+				a_d->seg[current_ic].volt_mask |= 1<<j;
 				//printf("j: %d tap %d, cvnb:%d\r\n",j,a_d->seg[current_ic].tap,a_d->seg[current_ic].cvnb[a_d->seg[current_ic].tap]);
 			}
 		}
-	  }
+		if(a_d->seg[current_ic].volt_mask > a_d->seg[current_ic].old_mask){//or set the new mask to old mask... tbd
+			//a_d->seg[current_ic].repeat_coll = 1;
+			printf("new mask greater than old mask\r\n");
+			//a_d->seg[current_ic].volt_mask = a_d->seg[current_ic].old_mask;
+		}
+		else{
+			//a_d->seg[current_ic].repeat_coll = 0;
+		}
+	}
+	if(a_d->seg[0].repeat_coll||a_d->seg[1].repeat_coll||a_d->seg[2].repeat_coll||a_d->seg[3].repeat_coll||a_d->seg[4].repeat_coll){
+		coll_unbalanced_cells();
+		printf("need to repeat\r\n");
+	}
 }
 
 void temp_test(void){
@@ -542,7 +579,7 @@ void temp_calc(uint8_t nargs, char **args){
     for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
     {
       //Communication control bits and communication data bytes. Refer to the data sheet.
-		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
+		/*a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start (6) + I2C_address D0 (A0) (Write operation to set the word address)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00; // Icom Blank (0) + eeprom address(word address) D1 (0x00)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x08; // Fcom master NACK(8)
@@ -554,7 +591,7 @@ void temp_calc(uint8_t nargs, char **args){
 
 	      wakeup_idle(TOTAL_IC);
 	      LTC6813_stcomm(3);
-	      //old
+	      //old*/
         /*a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
         a_d->BMS_IC[current_ic].com.tx_data[1]= 0x88;//1000 + master NACK(8)
         a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
@@ -563,20 +600,20 @@ void temp_calc(uint8_t nargs, char **args){
         a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
         */
         //new
-		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x09;//Icom Start(6) + 1001(0x9)
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x88;//1000 + master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
 		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
 
-        /*
+
         a_d->BMS_IC[current_ic].com.tx_data[0]= 0b01101001;//Icom Start(6) + 1001(0x9)
-		a_d->BMS_IC[current_ic].com.tx_data[1]= 0b10001000;//1000 + master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0b10000000;//1000 + master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0b00000100;//blank + 0100(only 7 on)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0b00001001;//0000(4-1 off mux channel) + master NACK(8)+stop
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
-		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;*/
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;
     }
     wakeup_sleep(TOTAL_IC);
     LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm registter
@@ -654,9 +691,29 @@ void fan_control(uint8_t nargs, char **args){
 	else{
 		printf("Incorrect number of ARGS should be 1");
 	}
+	//for later for temp based fan editing
+	while(0){
+		int temp = 2;
+		//temp range 0->60
+		//x/100=x/60
+				dutyCycle = (temp/60)*65535;
+	}
 }
 
 void can_test(uint8_t nargs, char **args){
+	CAN_TxHeaderTypeDef TxHeader;
+	uint32_t TxMailbox;
+	//uint8_t TxData[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+	uint8_t TxData[3] = {0x90 ,0xAB, 0x2A};
+    if (HAL_CAN_AddTxMessage(a_d->hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
+    {
+      /* Transmission request Error */
+    	printf("broke\r\n");
+      //Error_Handler();
+    }
+}
+
+void to_ecu(){
 	CAN_TxHeaderTypeDef TxHeader;
 	uint32_t TxMailbox;
 	//uint8_t TxData[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
@@ -878,9 +935,9 @@ void print_cells(uint8_t datalog_en)
   {
     if (datalog_en == 0)
     {
-      printf("\r\n	-------------------------------------");
-      printf("\r\n	| vmin: %d || vmax: %d || vtot: %lu |",a_d->seg[current_ic].v_min,a_d->seg[current_ic].v_max,a_d->seg[current_ic].v_tot);
-      printf("\r\n	-------------------------------------\r\n");
+      printf("\r\n	-------------------------------------------------------");
+      printf("\r\n	| vmin: %f || vmax: %f || vtot: %f |",a_d->seg[current_ic].v_min*0.0001,a_d->seg[current_ic].v_max*0.0001,a_d->seg[current_ic].v_tot*0.0001);
+      printf("\r\n	-------------------------------------------------------\r\n");
       printf("	--------\r\n");
       printf("	| IC %d |",current_ic+1);
       printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n	");

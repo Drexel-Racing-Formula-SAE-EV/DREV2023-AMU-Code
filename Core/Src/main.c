@@ -119,7 +119,7 @@ const osThreadAttr_t Discharge_attributes = {
 osThreadId_t BalanceHandle;
 const osThreadAttr_t Balance_attributes = {
   .name = "Balance",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for HAL_CURR_COLL */
@@ -1525,8 +1525,12 @@ void Start_Balancing(void *argument)
   for(;;)
   {
 	  if(a_d.mode ==2){
-		  printf(" in bal\r\n");
-		  bal_all(0,NULL);
+		  for(int i=0; i<3;i++){
+			  printf(" in bal\r\n");
+			  bal_all(0,NULL);
+		  }
+		  a_d.mode = 127;
+		  printf("\r\nBALANCING MODE DONE\r\n");
 	  }
     osDelay(1000);
   }

@@ -89,7 +89,7 @@
 /*! Cell Voltage data structure. */
 typedef struct
 {
-  uint16_t c_codes[18]; //!< Cell Voltage Codes
+  volatile uint16_t c_codes[18]; //!< Cell Voltage Codes
   uint8_t pec_match[6]; //!< If a PEC error was detected during most recent read cmd
 } cv;
 
@@ -180,9 +180,9 @@ typedef struct
 }ltcvar;
 
 typedef struct{
-	 uint16_t v_max;
-	 uint16_t v_min;
-	 uint16_t v_avg;
+	 volatile uint16_t v_max;
+	 volatile uint16_t v_min;
+	 volatile uint16_t v_avg;
 	 uint32_t v_tot;
 
 	//cell voltage not balanced/too high array[18]
@@ -190,6 +190,11 @@ typedef struct{
 	//track cvnb position for marking unbalanced cells
 	 uint8_t tap;
 	 uint8_t old_tap;
+	 //binary mapping for cell voltage that is too high during balancing
+	 volatile uint16_t volt_mask;
+	 volatile uint16_t old_mask;
+
+	 uint8_t repeat_coll;
 }segment;
 
 typedef struct
