@@ -37,7 +37,7 @@ void chg_mode(uint8_t nargs, char **args);
 
 void coll_cell_volt(void);
 
-void temp_calc(uint8_t nargs, char **args);
+void temp_calc(uint8_t channel);
 
 void temp_test(void);
 

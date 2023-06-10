@@ -86,6 +86,13 @@
 
 #define MSG_LEN 256//default 128
 
+typedef struct
+{
+	 volatile uint16_t v_min;
+	 volatile uint16_t v_max;
+	 volatile uint16_t v_avg;
+} can_ecu;
+
 /*! Cell Voltage data structure. */
 typedef struct
 {
@@ -217,6 +224,7 @@ typedef struct
 	DMA_HandleTypeDef *hdma_usart2_rx;
 
 	DAC_HandleTypeDef *hdac;
+	ADC_HandleTypeDef *hadc;
 
 	cell_asic *BMS_IC;
 
@@ -260,6 +268,7 @@ typedef struct
 
 
 } app_data;
+
 
 
 

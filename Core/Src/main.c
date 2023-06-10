@@ -119,7 +119,7 @@ const osThreadAttr_t Discharge_attributes = {
 osThreadId_t BalanceHandle;
 const osThreadAttr_t Balance_attributes = {
   .name = "Balance",
-  .stack_size = 256 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for HAL_CURR_COLL */
@@ -135,6 +135,13 @@ const osThreadAttr_t Safety_Check_attributes = {
   .name = "Safety_Check",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityHigh4,
+};
+/* Definitions for To_ECU */
+osThreadId_t To_ECUHandle;
+const osThreadAttr_t To_ECU_attributes = {
+  .name = "To_ECU",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
 };
 /* Definitions for uart_mutex */
 osMutexId_t uart_mutexHandle;
@@ -209,6 +216,7 @@ void Start_Discharging(void *argument);
 void Start_Balancing(void *argument);
 void Start_CURR_COLL(void *argument);
 void StartSafetyCheck(void *argument);
+void ToECUTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 PUTCHAR_PROTOTYPE
@@ -316,6 +324,7 @@ int main(void)
   a_d.htim10 = &htim10;
   a_d.htim12 = &htim12;
   a_d.hdac = &hdac;
+  a_d.hadc = &hadc1;
   a_d.BMS_IC = BMS_IC;
   a_d.debug = 0;
   a_d.Freq = 0;
@@ -368,6 +377,7 @@ int main(void)
 
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   HAL_DAC_Start(&hdac, DAC_CHANNEL_2);
+  HAL_ADC_Start(&hadc1);
 
   HAL_TIM_IC_Start_IT(&htim9, TIM_CHANNEL_1); // Primary channel - rising edge
   HAL_TIM_IC_Start(&htim9, TIM_CHANNEL_2);    // Secondary channel - falling edge
@@ -426,6 +436,9 @@ int main(void)
 
   /* creation of Safety_Check */
   Safety_CheckHandle = osThreadNew(StartSafetyCheck, NULL, &Safety_Check_attributes);
+
+  /* creation of To_ECU */
+  To_ECUHandle = osThreadNew(ToECUTask, NULL, &To_ECU_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1551,6 +1564,10 @@ void Start_CURR_COLL(void *argument)
   /* Infinite loop */
   for(;;)
   {
+	  // Poll ADC1 Perihperal & TimeOut = 1mSec
+	  //HAL_ADC_PollForConversion(&hadc1, 10);
+	 //	Read The ADC Conversion Result & Map It To PWM DutyCycle
+	  //printf("current voltage: %lu\r\n",HAL_ADC_GetValue(&hadc1));
 	  if(0){
 		  CSE4_RESET
 		  u_sleep(3);
@@ -1588,6 +1605,43 @@ void StartSafetyCheck(void *argument)
     osDelay(10);
   }
   /* USER CODE END StartSafetyCheck */
+}
+
+/* USER CODE BEGIN Header_ToECUTask */
+/**
+* @brief Function implementing the To_ECU thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_ToECUTask */
+void ToECUTask(void *argument)
+{
+  /* USER CODE BEGIN ToECUTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	CAN_TxHeaderTypeDef TxHeader;
+	TxHeader.StdId = 0x420;
+	TxHeader.ExtId = 0x00;
+	TxHeader.IDE = CAN_ID_STD;
+	TxHeader.RTR = CAN_RTR_DATA;
+	TxHeader.DLC = 8;
+	TxHeader.TransmitGlobalTime = DISABLE;
+	uint32_t TxMailbox;
+	//uint8_t TxData[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
+	uint8_t TxData[3] = {0x90 ,0xAB, 0x2A};
+	//every data frame contains 8 bytes of data
+	//if (HAL_CAN_AddTxMessage(a_d->hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
+	if (HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox) != HAL_OK)
+	{
+	  /* Transmission request Error */
+		//printf("broke\r\n");
+	  //Error_Handler();
+	}
+    osDelay(100);
+
+  }
+  /* USER CODE END ToECUTask */
 }
 
 /**

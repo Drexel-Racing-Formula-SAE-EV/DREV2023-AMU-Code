@@ -32,14 +32,14 @@ static const sc_command console_commands[] = {
     {"help",    "Displays list of all available CLI commands",  cli_help},
 	{"display", "Displays {overall, temp, volt} : ", display},
 	{"edit","Edits Paramater (2 ARGS){\r\n\
-\r\n		MC: Max Current\
-\r\n		MACV: Max Cell Voltage\
-\r\n		MICV: Min Cell Voltage\
-\r\n		MAOV: Max System Voltage\
-\r\n		MIOV: Min System Voltage\
-\r\n		MASOC: Max SoC\
-\r\n		MISOC: Min SoC\
-\r\n		SPIN: Select 1 Pin for cell discharge 1-18}",edit_params},
+		\r\n\t\tMC: Max Current\
+		\r\n\t\tMACV: Max Cell Voltage\
+		\r\n\t\tMICV: Min Cell Voltage\
+		\r\n\t\tMAOV: Max System Voltage\
+		\r\n\t\tMIOV: Min System Voltage\
+		\r\n\t\tMASOC: Max SoC\
+		\r\n\t\tMISOC: Min SoC\
+		\r\n\t\tSPIN: Select 1 Pin for cell discharge 1-18}",edit_params},
 	{"1", "Runs Test 1", test1},
 	{"spi_comm", "Spi Comm Test",spi_comm_test},
 	{"4", "Runs Test 4",test4 },

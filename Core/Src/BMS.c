@@ -317,6 +317,9 @@ void chg_mode(uint8_t nargs, char **args){
 			printf("Incorrect Arg\r\n");
 		}
 	}
+	else if(nargs ==0){
+		printf("Mode: %d\r\n",a_d->mode);
+	}
 	else{
 		printf("too few/many arguments\r\n");
 	}
@@ -376,6 +379,7 @@ void coll_cell_volt(void){//uint8_t nargs, char **args){
         	print_cells(DATALOG_DISABLED);
         	__HAL_TIM_SET_COUNTER(a_d->htim12,0);
         	printf("\r\n\r\n");
+        	//printf("current voltage: %lu\r\n",HAL_ADC_GetValue(a_d->hadc));
     	}
     }
 }
@@ -434,8 +438,8 @@ void bal_all(uint8_t nargs, char **args){
 	//tracks taps previous position
 	//uint8_t old_tap[TOTAL_IC] = {0};
 	for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
-		a_d->seg[curr_ic].old_tap = 0;
-		a_d->seg[curr_ic].tap = 0;
+		//a_d->seg[curr_ic].old_tap = 0;
+		//a_d->seg[curr_ic].tap = 0;
 		a_d->seg[curr_ic].old_mask = 65535;//16 cells active
 	}
 	//was balancing stopped? 0 yes 1 no
@@ -464,7 +468,7 @@ void bal_all(uint8_t nargs, char **args){
 				for(int i = 0; i<18;i++){
 					if((a_d->seg[curr_ic].volt_mask>>i)&1){
 						printf("%d,",i+1);
-						a_d->s_pin = i+1;
+						a_d->s_pin = i+1;//maybe remove +1
 						LTC6813_set_discharge_per_segment(a_d->s_pin,curr_ic,a_d->BMS_IC);
 					}
 				}
@@ -490,7 +494,7 @@ void bal_all(uint8_t nargs, char **args){
 			if(a_d->seg[curr_ic].old_mask != a_d->seg[curr_ic].volt_mask){
 				stop_balance(0,NULL);
 				stp = 0;
-				printf("1 cell finished! %d left",a_d->seg[curr_ic].tap);
+				printf("Seg%d: 1 cell finished! %d left",curr_ic,a_d->seg[curr_ic].tap);
 				//printf("old tap: %d\r\nnew tap: %d\r\n",old_tap[curr_ic],a_d->seg[curr_ic].tap);
 			}
 		}
@@ -503,7 +507,7 @@ void bal_all(uint8_t nargs, char **args){
 }
 
 void bal_cell(uint8_t segment){
-	s_pin_read = a_d->s_pin;
+	//s_pin_read = a_d->s_pin;
     //s_pin_read = select_s_pin();
     //s_pin_read = 4;
     wakeup_sleep(TOTAL_IC);
@@ -552,24 +556,25 @@ void coll_unbalanced_cells(void){
 }
 
 void temp_test(void){
-
-	temp_calc(0,NULL);
-
-	//for testing read T Cell 14... on mux 00
-	for(int i = 0; i<4; i++){
-		wakeup_sleep(TOTAL_IC);
-		LTC6813_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
-		conv_time = LTC6813_pollAdc();
-		print_conv_time(conv_time);
-		wakeup_sleep(TOTAL_IC);
-		error = LTC6813_rdaux(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all aux registers
-		check_error(error);
-		print_aux(DATALOG_DISABLED);
-		osDelay(1000);
+	for(int i=0;i<8;i++){
+		temp_calc(i);
+		//printf("\r\n%d\r\n",i);
+		//for testing read T Cell 14... on mux 00
+		for(int i = 0; i<4; i++){
+			//wakeup_sleep(TOTAL_IC);
+			//LTC6813_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
+			//conv_time = LTC6813_pollAdc();
+			//print_conv_time(conv_time);
+			//wakeup_sleep(TOTAL_IC);
+			//error = LTC6813_rdaux(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all aux registers
+			//check_error(error);
+			//print_aux(DATALOG_DISABLED);
+			//osDelay(1000);
+		}
 	}
 }
 
-void temp_calc(uint8_t nargs, char **args){
+void temp_calc(uint8_t channel){
     /************************************************************
       Ensure to set the GPIO bits to 1 in the CFG register group.
     *************************************************************/
@@ -600,20 +605,71 @@ void temp_calc(uint8_t nargs, char **args){
         a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
         */
         //new
+    	//7,6,5,4,3,2,1,0
+    	if(channel > 7){
+    		printf("Channel size not in params\r\n");
+    	}
+    	else if(channel > 3){
+    		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x0|(1<<(channel-4));//blank + 0100(only 7 on)
+    		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
+    	}
+    	else{
+    		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00;//blank + 0100(only 7 on)
+    		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09|(1<<(channel+4));//0000(4-1 off mux channel) + master NACK(8)+stop
+    	}
 		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x88;//1000 + master NACK(8)
-		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
-		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
+		//a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
+		//a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
 		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
 
 
-        a_d->BMS_IC[current_ic].com.tx_data[0]= 0b01101001;//Icom Start(6) + 1001(0x9)
+        /*a_d->BMS_IC[current_ic].com.tx_data[0]= 0b01101001;//Icom Start(6) + 1001(0x9)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0b10000000;//1000 + master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0b00000100;//blank + 0100(only 7 on)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0b00001001;//0000(4-1 off mux channel) + master NACK(8)+stop
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
-		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;*/
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start(6) + I2C_address D0 (0xA0)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x08; // Fcom master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00; // Icom Blank (0) + eeprom address D1 (0x00)
+		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x08; // Fcom master NACK(8)
+		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x01; // Icom Blank (0) + data D2 (0x13)
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0x39; // Fcom master NACK + Stop(9)
+    }
+    wakeup_sleep(TOTAL_IC);
+    LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm registter
+
+    wakeup_idle(TOTAL_IC);
+    LTC6813_stcomm(3); // data length=3 // initiates communication between master and the I2C slave
+
+    wakeup_idle(TOTAL_IC);
+    error = LTC6813_rdcomm(TOTAL_IC,a_d->BMS_IC); // read from comm register
+    check_error(error);
+    print_wrcomm();
+    print_rxcomm(); // print received data from the comm register
+    /*
+    //2nd mux
+    for (uint8_t current_ic = 0; current_ic<TOTAL_IC;current_ic++)
+    {
+    	if(channel > 7){
+    		printf("Channel size not in params\r\n");
+    	}
+    	else if(channel > 3){
+    		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x0|(1<<(channel-4));//blank + 0100(only 7 on)
+    		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
+    	}
+    	else{
+    		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00;//blank + 0100(only 7 on)
+    		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09|(1<<(channel+4));//0000(4-1 off mux channel) + master NACK(8)+stop
+    	}
+		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x69;//Icom Start(6) + 1001(0x9)
+		a_d->BMS_IC[current_ic].com.tx_data[1]= 0xA8;//1000 + master NACK(8)
+		//a_d->BMS_IC[current_ic].com.tx_data[2]= 0x04;//blank + 0100(only 7 on)
+		//a_d->BMS_IC[current_ic].com.tx_data[3]= 0x09;//0000(4-1 off mux channel) + master NACK(8)+stop
+		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;//1001 master nack + STOP
     }
     wakeup_sleep(TOTAL_IC);
     LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm registter
@@ -625,7 +681,7 @@ void temp_calc(uint8_t nargs, char **args){
     error = LTC6813_rdcomm(TOTAL_IC,a_d->BMS_IC); // read from comm register
     check_error(error);
     print_wrcomm();
-    print_rxcomm(); // print received data from the comm register
+    print_rxcomm(); // print received data from the comm register*/
 }
 
 void get_cell_data(uint8_t nargs, char **args){
@@ -935,22 +991,22 @@ void print_cells(uint8_t datalog_en)
   {
     if (datalog_en == 0)
     {
-      printf("\r\n	-------------------------------------------------------");
-      printf("\r\n	| vmin: %f || vmax: %f || vtot: %f |",a_d->seg[current_ic].v_min*0.0001,a_d->seg[current_ic].v_max*0.0001,a_d->seg[current_ic].v_tot*0.0001);
-      printf("\r\n	-------------------------------------------------------\r\n");
-      printf("	--------\r\n");
-      printf("	| IC %d |",current_ic+1);
-      printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n	");
+      printf("\r\n\t-------------------------------------------------------");
+      printf("\r\n\t| vmin: %f || vmax: %f || vtot: %f |",a_d->seg[current_ic].v_min*0.0001,a_d->seg[current_ic].v_max*0.0001,a_d->seg[current_ic].v_tot*0.0001);
+      printf("\r\n\t-------------------------------------------------------\r\n");
+      printf("\t--------\r\n");
+      printf("\t| IC %d |",current_ic+1);
+      printf("\r\n\t------------------------------------------------------------------------------------------------------------------------------\r\n\t");
       for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels/2; i++)
       {
         printf("| C%d:%.4f  |",i+1,a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
       }
-      printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n	");
+      printf("\r\n\t------------------------------------------------------------------------------------------------------------------------------\r\n\t");
       for (int i=a_d->BMS_IC[0].ic_reg.cell_channels/2; i<a_d->BMS_IC[0].ic_reg.cell_channels; i++)
       {
         printf("| C%d:%.4f |",i+1,a_d->BMS_IC[current_ic].cells.c_codes[i]*0.0001);
       }
-      printf("\r\n	------------------------------------------------------------------------------------------------------------------------------\r\n");
+      printf("\r\n\t------------------------------------------------------------------------------------------------------------------------------\r\n");
     }
     else
     {
