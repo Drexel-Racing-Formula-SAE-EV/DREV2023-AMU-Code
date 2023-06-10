@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -1333,6 +1332,8 @@ void init_appdata(app_data *app_data_init)
 	init_app_data_6813(&a_d);
 	init_app_data_help(&a_d);
 	init_app_data_bms(&a_d);
+	init_app_data_dt(&a_d);
+	init_app_data_bmsp(&a_d);
 }
 /* USER CODE END 4 */
 

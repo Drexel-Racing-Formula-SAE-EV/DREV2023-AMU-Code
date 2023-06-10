@@ -13,19 +13,11 @@
 #include "help.h"
 #include "string.h"
 #include "cmsis_os.h"
-
-
-void spi_infinite_send(uint8_t nargs, char **args);
-
-void spi_loopback(uint8_t nargs, char **args);
-
-void test1(uint8_t nargs, char **args);
+#include "BMS_print.h"
 
 void spi_comm_test(uint8_t nargs, char **args);
 
 void test4(uint8_t nargs, char **args);
-
-void test5(uint8_t nargs, char **args);
 
 void run_test(uint8_t nargs, char **args);
 
@@ -57,17 +49,11 @@ void coll_unbalanced_cells(void);
 
 void fan_control(uint8_t nargs, char **args);
 
-void can_test(uint8_t nargs, char **args);
-
-void pwm_out_test(uint8_t nargs, char **args);
-
-void pwm_in_test(uint8_t nargs, char **args);
-
-void dac_test(uint8_t nargs, char **args);
-
 void charging_mode();
 
 void discharge_mode();
+
+void balancing_mode();
 
 void vmon();
 
@@ -76,24 +62,6 @@ void shutdown();
 void print_conv_time(uint32_t conv_time);
 
 void check_error(int error);
-
-void print_cells(uint8_t datalog_en);
-
-void print_wrconfig(void);
-
-void print_wrconfigb(void);
-
-void print_rxconfig(void);
-
-void print_rxconfigb(void);
-
-void print_aux(uint8_t datalog_en);
-
-
-
-void print_rxcomm(void);
-
-void print_wrcomm(void);
 
 void init_app_data_bms(app_data *app_data_init);
 

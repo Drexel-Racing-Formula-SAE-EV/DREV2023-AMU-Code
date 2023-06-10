@@ -191,12 +191,6 @@ typedef struct{
 	 volatile uint16_t v_min;
 	 volatile uint16_t v_avg;
 	 uint32_t v_tot;
-
-	//cell voltage not balanced/too high array[18]
-	 uint8_t cvnb[18];
-	//track cvnb position for marking unbalanced cells
-	 uint8_t tap;
-	 uint8_t old_tap;
 	 //binary mapping for cell voltage that is too high during balancing
 	 volatile uint16_t volt_mask;
 	 volatile uint16_t old_mask;

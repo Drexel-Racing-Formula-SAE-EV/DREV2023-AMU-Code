@@ -13,6 +13,7 @@
 #include "cmsis_os.h"
 #include "help.h"
 #include "BMS.h"
+#include "driver_test.h"
 
 static void cli_help(uint8_t nargs, char **args);
 static void rx_byte(char cRxByte);
