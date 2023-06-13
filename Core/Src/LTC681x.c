@@ -56,9 +56,16 @@ void wakeup_idle(uint8_t total_ic) //Number of ICs in the system
 {
 	for (int i =0; i<total_ic; i++)
 	{
-	   LTC_6813_CS_RESET//change to defines in help.h - set to be interchangeable depending on spi bus
-	   spi_read_byte(0xFF);//Guarantees the isoSPI will be in ready mode
-	   LTC_6813_CS_SET
+		if(a_d->ltcstring == 1){
+		   LTC_6813B_CS_RESET//change to defines in help.h - set to be interchangeable depending on spi bus
+		   spi_read_byte(0xFF);//Guarantees the isoSPI will be in ready mode
+		   LTC_6813B_CS_SET
+		}
+		else{
+		   LTC_6813_CS_RESET//change to defines in help.h - set to be interchangeable depending on spi bus
+		   spi_read_byte(0xFF);//Guarantees the isoSPI will be in ready mode
+		   LTC_6813_CS_SET
+		}
 	}
 }
 
@@ -68,11 +75,20 @@ void wakeup_sleep(uint8_t total_ic) //Number of ICs in the system
 	for (int i =0; i<total_ic; i++)
 	{
 	   //printf("made it in\r\n");
-	   LTC_6813_CS_RESET
-	   u_sleep(300); // Guarantees the LTC681x will be in standby
-	   //printf("stuck\r\n");
-	   LTC_6813_CS_SET
-	   u_sleep(10);
+		if(a_d->ltcstring == 1){
+		   LTC_6813B_CS_RESET
+		   u_sleep(300); // Guarantees the LTC681x will be in standby
+		   //printf("stuck\r\n");
+		   LTC_6813B_CS_SET
+		   u_sleep(10);
+		}
+		else{
+		   LTC_6813_CS_RESET
+		   u_sleep(300); // Guarantees the LTC681x will be in standby
+		   //printf("stuck\r\n");
+		   LTC_6813_CS_SET
+		   u_sleep(10);
+		}
 	}
 }
 
@@ -89,9 +105,16 @@ void cmd_68(uint8_t tx_cmd[2]) //The command to be transmitted
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	LTC_6813_CS_RESET
-	spi_write_array(4,cmd);
-	LTC_6813_CS_SET
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_array(4,cmd);
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		spi_write_array(4,cmd);
+		LTC_6813_CS_SET
+	}
 }
 
 /*
@@ -132,12 +155,18 @@ void write_68(uint8_t total_ic, //Number of ICs to be written to
 		cmd[cmd_index + 1] = (uint8_t)data_pec;
 		cmd_index = cmd_index + 2;
 	}
-
-	LTC_6813_CS_RESET
-	//u_sleep(100);
-	spi_write_array(CMD_LEN, cmd);
-	//u_sleep(100);
-	LTC_6813_CS_SET
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_array(CMD_LEN, cmd);
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		//u_sleep(100);
+		spi_write_array(CMD_LEN, cmd);
+		//u_sleep(100);
+		LTC_6813_CS_SET
+	}
 
 	free(cmd);
 }
@@ -161,13 +190,18 @@ int8_t read_68( uint8_t total_ic, // Number of ICs in the system
 	cmd_pec = pec15_calc(2, cmd);
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
-
-	LTC_6813_CS_RESET
-	//u_sleep(100);
-	spi_write_read(cmd, 4, data, (BYTES_IN_REG*total_ic));         //Transmits the command and reads the configuration data of all ICs on the daisy chain into rx_data[] array
-	//u_sleep(100);
-	LTC_6813_CS_SET
-
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_read(cmd, 4, data, (BYTES_IN_REG*total_ic));         //Transmits the command and reads the configuration data of all ICs on the daisy chain into rx_data[] array
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		//u_sleep(100);
+		spi_write_read(cmd, 4, data, (BYTES_IN_REG*total_ic));         //Transmits the command and reads the configuration data of all ICs on the daisy chain into rx_data[] array
+		//u_sleep(100);
+		LTC_6813_CS_SET
+	}
 	for (uint8_t current_ic = 0; current_ic < total_ic; current_ic++) //Executes for each LTC681x in the daisy chain and packs the data
 	{																//into the rx_data array as well as check the received data for any bit errors
 		for (uint8_t current_byte = 0; current_byte < BYTES_IN_REG; current_byte++)
@@ -769,9 +803,16 @@ void LTC681x_rdcv_reg(uint8_t reg, //Determines which cell voltage register is r
 		printf("%x\r\n",cmd[i]);
 	}*/
 	//printf("aaaaah\r\n");
-	LTC_6813_CS_RESET
-	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-	LTC_6813_CS_SET
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+		LTC_6813_CS_SET
+	}
 }
 
 /*
@@ -818,9 +859,16 @@ void LTC681x_rdaux_reg(uint8_t reg, //Determines which GPIO voltage register is 
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	LTC_6813_CS_RESET
-	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-	LTC_6813_CS_SET
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+		LTC_6813_CS_SET
+	}
 }
 
 /*
@@ -858,9 +906,16 @@ void LTC681x_rdstat_reg(uint8_t reg, //Determines which stat register is read ba
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	LTC_6813_CS_RESET
-	spi_write_read(cmd,4,data,(REG_LEN*total_ic));
-	LTC_6813_CS_SET
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		spi_write_read(cmd,4,data,(REG_LEN*total_ic));
+		LTC_6813_CS_SET
+	}
 }
 
 /* Helper function that parses voltage measurement registers */
@@ -921,10 +976,18 @@ uint8_t LTC681x_pladc()
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	LTC_6813_CS_RESET
-	spi_write_array(4,cmd);
-	adc_state = spi_read_byte(0xFF);
-	LTC_6813_CS_SET
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_array(4,cmd);
+		adc_state = spi_read_byte(0xFF);
+		LTC_6813B_CS_SET
+	}
+	else{
+		LTC_6813_CS_RESET
+		spi_write_array(4,cmd);
+		adc_state = spi_read_byte(0xFF);
+		LTC_6813_CS_SET
+	}
 
 	return(adc_state);
 }
@@ -944,27 +1007,40 @@ uint32_t LTC681x_pollAdc()
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	LTC_6813_CS_RESET
-	//while(1){
-	spi_write_array(4,cmd);
-	//}
-	while ((counter<200000)&&(finished == 0))
-	{
-		//printf("pol adc while\r\n");
-		current_time = spi_read_byte(0xff);
-		if (current_time>0)
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_array(4,cmd);
+		while ((counter<200000)&&(finished == 0))
 		{
-			//printf("curr time fin: %d\r\n",current_time);
-			finished = 1;
+			current_time = spi_read_byte(0xff);
+			if (current_time>0)
+			{
+				finished = 1;
+			}
+			else
+			{
+				counter = counter + 10;
+			}
 		}
-		else
-		{
-			counter = counter + 10;
-			//printf("curr time:%d\r\n",current_time);
-		}
-		//HAL_Delay(1000);
+		LTC_6813B_CS_SET
 	}
-	LTC_6813_CS_SET
+	else{
+		LTC_6813_CS_RESET
+		spi_write_array(4,cmd);
+		while ((counter<200000)&&(finished == 0))
+		{
+			current_time = spi_read_byte(0xff);
+			if (current_time>0)
+			{
+				finished = 1;
+			}
+			else
+			{
+				counter = counter + 10;
+			}
+		}
+		LTC_6813_CS_SET
+	}
 
 	return(counter);
 }
@@ -1933,9 +2009,16 @@ void LTC681x_stsctrl()
     cmd[2] = (uint8_t)(cmd_pec >> 8);
     cmd[3] = (uint8_t)(cmd_pec);
 
-    LTC_6813_CS_RESET
-    spi_write_array(4,cmd);
-    LTC_6813_CS_SET
+    if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_array(4,cmd);
+		LTC_6813B_CS_SET
+    }
+    else{
+		LTC_6813_CS_RESET
+		spi_write_array(4,cmd);
+		LTC_6813_CS_SET
+    }
 }
 
 /*
@@ -2032,15 +2115,26 @@ void LTC681x_stcomm(uint8_t len) //Length of data to be transmitted
 	cmd[2] = (uint8_t)(cmd_pec >> 8);
 	cmd[3] = (uint8_t)(cmd_pec);
 
-	LTC_6813_CS_RESET
-	spi_write_array(4,cmd);
-	for (int i = 0; i<len*3; i++)
-	{
-	  spi_read_byte(0xFF);
+	if(a_d->ltcstring == 1){
+		LTC_6813B_CS_RESET
+		spi_write_array(4,cmd);
+		for (int i = 0; i<len*3; i++)
+		{
+		  spi_read_byte(0xFF);
+		}
+		u_sleep(75);//maybe remove?
+		LTC_6813B_CS_SET
 	}
-	//printf("stcomm rx len: %d\r\n",len);
-	u_sleep(75);
-	LTC_6813_CS_SET
+	else{
+		LTC_6813_CS_RESET
+		spi_write_array(4,cmd);
+		for (int i = 0; i<len*3; i++)
+		{
+		  spi_read_byte(0xFF);
+		}
+		u_sleep(75);//maybe remove?
+		LTC_6813_CS_SET
+	}
 }
 
 /* Helper function that increments PEC counters */
@@ -2243,7 +2337,12 @@ void spi_write_array(uint8_t len, // Option: Number of bytes to be written on th
     HAL_SPI_Transmit(a_d->hspi1, data[i],1,100);
     //printf("%x ",data[i]);
   }*/
-	HAL_SPI_Transmit(a_d->hspi1, data,len,100);
+	if(a_d->ltcstring == 1){
+		HAL_SPI_Transmit(a_d->hspi2, data,len,100);
+	}
+	else{
+		HAL_SPI_Transmit(a_d->hspi1, data,len,100);
+	}
   /*printf("write array\r\n");
   printf("%d len of send\r\n",len);
   for(uint8_t i = 0; i<len; i++){
@@ -2268,7 +2367,14 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
   {
     HAL_SPI_Transmit(a_d->hspi1, tx_Data[i],1,10000);
   }*/
-  HAL_SPI_Transmit(a_d->hspi1, tx_Data,tx_len,100);
+	if(a_d->ltcstring == 1){
+		HAL_SPI_Transmit(a_d->hspi2, tx_Data,tx_len,100);
+		HAL_SPI_TransmitReceive(a_d->hspi2, blank_data, rx_data,rx_len,100);
+	}
+	else{
+		HAL_SPI_Transmit(a_d->hspi1, tx_Data,tx_len,100);
+		HAL_SPI_TransmitReceive(a_d->hspi1, blank_data, rx_data,rx_len,100);
+	}
   /*printf("write array\r\n");
   printf("%d len of send\r\n",tx_len);
   for(uint8_t i = 0; i<tx_len; i++){
@@ -2281,7 +2387,7 @@ void spi_write_read(uint8_t tx_Data[],//array of data to be written on SPI port
 	  debug = HAL_SPI_TransmitReceive(a_d->hspi1, blank_data[0], rx_data[i],1,10000);
 	  //HAL_SPI_Receive(a_d->hspi1, rx_data,1,10000);
   }*/
-  HAL_SPI_TransmitReceive(a_d->hspi1, blank_data, rx_data,rx_len,100);
+  //This Line Good---HAL_SPI_TransmitReceive(a_d->hspi1, blank_data, rx_data,rx_len,100);
   //printf("%d len of rx\r\n",rx_len);
   //HAL_SPI_Receive(a_d->hspi1, rx_data,rx_len,10000);
   /*printf(" cell\r\n");
@@ -2300,7 +2406,12 @@ uint8_t spi_read_byte(uint8_t tx_dat)
   uint8_t data;
   uint8_t blank_data[1]={tx_dat};
   //data = (uint8_t)SPI.transfer(0xFF);
-  HAL_SPI_TransmitReceive(a_d->hspi1,blank_data, data,1,100);
+  if(a_d->ltcstring == 1){
+	  HAL_SPI_TransmitReceive(a_d->hspi2,blank_data, data,1,100);
+  }
+  else{
+	  HAL_SPI_TransmitReceive(a_d->hspi1,blank_data, data,1,100);
+  }
   //HAL_SPI_Transmit(a_d->hspi1,blank_data, 1,100);
   //printf("%x\r\n",data);
   return(data);

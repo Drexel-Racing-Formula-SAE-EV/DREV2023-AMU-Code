@@ -21,6 +21,8 @@ void test4(uint8_t nargs, char **args);
 
 void run_test(uint8_t nargs, char **args);
 
+void chg_string(uint8_t nargs, char **args);
+
 void display(uint8_t nargs, char **args);
 
 void edit_params(uint8_t nargs, char **args);

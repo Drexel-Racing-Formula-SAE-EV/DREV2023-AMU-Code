@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -344,6 +345,7 @@ int main(void)
   a_d.VDisp = 0;
   a_d.shutdown = 0;
   a_d.mode = 127;
+  a_d.ltcstring = 0;
   printf(" ad:%d reg:%d\r\n",a_d.mode,127);
   a_d.hall_current = 0;
   init_appdata(&a_d);
@@ -1204,6 +1206,9 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SPI2CS1_Pin|SPI2CS2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -1217,12 +1222,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : OTG_FS_PowerSwitchOn_Pin */
-  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin;
+  /*Configure GPIO pins : OTG_FS_PowerSwitchOn_Pin PC1 */
+  GPIO_InitStruct.Pin = OTG_FS_PowerSwitchOn_Pin|GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(OTG_FS_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PDM_OUT_Pin */
   GPIO_InitStruct.Pin = PDM_OUT_Pin;
@@ -1383,7 +1388,7 @@ void Start_V_Mon(void *argument)
 		else{
 			a_d.volt_safe = 0;
 		}
-	  while(a_d.shutdown){osDelay(1000);};
+	  while(a_d.shutdown){osDelay(1000);};//change this later stuck forever
 	  osDelay(100);//change to 100 if not less
   }
   /* USER CODE END Start_V_Mon */
@@ -1449,7 +1454,7 @@ void Start_V_Display(void *argument)
 			  a_d.VDisp = 0;
 		  }
 	  }
-	  osDelay(1000);
+	  osDelay(10000);
   }
   /* USER CODE END Start_V_Display */
 }
@@ -1578,7 +1583,7 @@ void Start_CURR_COLL(void *argument)
 		  printf("hal lvl:%.02x,%.02x",spi_rx_buffer[0],spi_rx_buffer[1]);
 		  a_d.hall_current = spi_rx_buffer[0]||spi_rx_buffer[1]>>8;
 	  }
-	  while(a_d.shutdown){osDelay(1000);};
+	  while(a_d.shutdown){osDelay(1000);};//fix stuck forever
 	  osDelay(100);
   }
   /* USER CODE END Start_CURR_COLL */

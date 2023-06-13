@@ -97,6 +97,25 @@ void test4(uint8_t nargs, char **args){
 	  printf("\r\n exiting test4\r\n;");
 }
 
+void chg_string(uint8_t nargs, char **args){
+	if(nargs == 1){
+		if(strcmp(args[1], "0") == 0){
+			a_d->ltcstring = 0;
+			//printf("\r\n%d\r\n",a_d->ltcstring);
+		}
+		else if(strcmp(args[1], "1") == 0){
+			a_d->ltcstring = 1;
+			//printf("\r\n%d\r\n",a_d->ltcstring);
+		}
+		else{
+			;
+		}
+	}
+	else{
+		;
+	}
+}
+
 void run_test(uint8_t nargs, char **args){
 	if(nargs == 1){
 		if(strcmp(args[1], "charge") == 0){
@@ -391,7 +410,7 @@ void bal_all(uint8_t nargs, char **args){
 		//print_cells(DATALOG_DISABLED);
 		for(int curr_ic = 0; curr_ic<TOTAL_IC; curr_ic++){
 			if(a_d->seg[curr_ic].old_mask != a_d->seg[curr_ic].volt_mask){
-				stop_balance(0,NULL);
+				stop_balance(0,NULL);//maybe change
 				stp = 0;
 				printf("Seg%d: 1 cell finished! %d mask",curr_ic,a_d->seg[curr_ic].volt_mask);
 			}
@@ -590,52 +609,19 @@ void fan_control(uint8_t nargs, char **args){
 	if(nargs == 1){
 		if(strcmp(args[1], "off") == 0){
 			dutyCycle=0;
-            TIM1->CCR1 = dutyCycle;
-            TIM1->CCR2 = dutyCycle;
-            TIM1->CCR3 = dutyCycle;
-            TIM1->CCR4 = dutyCycle;
-            TIM3->CCR1 = dutyCycle;
-			TIM3->CCR2 = dutyCycle;
-			TIM3->CCR3 = dutyCycle;
-			TIM3->CCR4 = dutyCycle;
-			TIM4->CCR1 = dutyCycle;
-			TIM4->CCR2 = dutyCycle;
-			TIM4->CCR3 = dutyCycle;
-			TIM4->CCR4 = dutyCycle;
 		}
 		else if(strcmp(args[1], "half") == 0){
 			dutyCycle=65535/2;
-            TIM1->CCR1 = dutyCycle;
-            TIM1->CCR2 = dutyCycle;
-            TIM1->CCR3 = dutyCycle;
-            TIM1->CCR4 = dutyCycle;
-            TIM3->CCR1 = dutyCycle;
-			TIM3->CCR2 = dutyCycle;
-			TIM3->CCR3 = dutyCycle;
-			TIM3->CCR4 = dutyCycle;
-			TIM4->CCR1 = dutyCycle;
-			TIM4->CCR2 = dutyCycle;
-			TIM4->CCR3 = dutyCycle;
-			TIM4->CCR4 = dutyCycle;
 		}
 		else if(strcmp(args[1], "max") == 0){
 			dutyCycle=65535;
-            TIM1->CCR1 = dutyCycle;
-            TIM1->CCR2 = dutyCycle;
-            TIM1->CCR3 = dutyCycle;
-            TIM1->CCR4 = dutyCycle;
-            TIM3->CCR1 = dutyCycle;
-			TIM3->CCR2 = dutyCycle;
-			TIM3->CCR3 = dutyCycle;
-			TIM3->CCR4 = dutyCycle;
-			TIM4->CCR1 = dutyCycle;
-			TIM4->CCR2 = dutyCycle;
-			TIM4->CCR3 = dutyCycle;
-			TIM4->CCR4 = dutyCycle;
 		}
 		else{
 			printf("Incorrect ARG 1 Input\r\n");
 		}
+        TIM1->CCR1 = dutyCycle;TIM1->CCR2 = dutyCycle;TIM1->CCR3 = dutyCycle;TIM1->CCR4 = dutyCycle;
+        TIM3->CCR1 = dutyCycle;TIM3->CCR2 = dutyCycle;TIM3->CCR3 = dutyCycle;TIM3->CCR4 = dutyCycle;
+		TIM4->CCR1 = dutyCycle;TIM4->CCR2 = dutyCycle;TIM4->CCR3 = dutyCycle;TIM4->CCR4 = dutyCycle;
 	}
 	else{
 		printf("Incorrect number of ARGS should be 1");

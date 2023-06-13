@@ -30,12 +30,18 @@
 //SPI2_CS_2
 #define CSE4_RESET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_RESET);
 #define CSE4_SET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4, GPIO_PIN_SET);
+
+#define CSE6_RESET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_RESET);
+#define CSE6_SET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6, GPIO_PIN_SET);
 //SPI3_CS_1
 #define CSB0_RESET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 #define CSB0_SET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);
 //SPI3_CS_2
 #define CSB1_RESET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_RESET);
 #define CSB1_SET HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, GPIO_PIN_SET);
+
+#define CSC1_RESET HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+#define CSC1_SET HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
 
 //FAN CONTROLLERS
 #define E7_RESET HAL_GPIO_WritePin(GPIOE, GPIO_PIN_7, GPIO_PIN_RESET);
@@ -74,8 +80,11 @@
 #define D10_RESET HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_RESET);
 #define D10_SET HAL_GPIO_WritePin(GPIOD, GPIO_PIN_10, GPIO_PIN_SET);
 
-#define LTC_6813_CS_RESET CSB12_RESET
-#define LTC_6813_CS_SET CSB12_SET
+#define LTC_6813B_CS_RESET CSE6_RESET//CSC1_RESET //CSB12_RESET
+#define LTC_6813B_CS_SET CSE6_SET//CSC1_SET //CSB12_SET
+
+#define LTC_6813_CS_RESET CSC1_RESET //CSB12_RESET
+#define LTC_6813_CS_SET CSC1_SET //CSB12_SET
 
 #define RXBUF_SIZE 40
 #define TXBUF_SIZE 40
@@ -88,9 +97,11 @@
 
 typedef struct
 {
+	volatile uint8_t id;
 	 volatile uint16_t v_min;
 	 volatile uint16_t v_max;
 	 volatile uint16_t v_avg;
+	 volatile uint8_t checksum;
 } can_ecu;
 
 /*! Cell Voltage data structure. */
@@ -259,6 +270,8 @@ typedef struct
 	 volatile uint8_t temp_safe;
 	 volatile uint8_t volt_safe;
 	 volatile uint8_t curr_safe;
+
+	 uint8_t ltcstring;
 
 
 } app_data;

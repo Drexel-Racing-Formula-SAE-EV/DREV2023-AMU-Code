@@ -44,6 +44,7 @@ static const sc_command console_commands[] = {
 	{"spi_comm", "Spi Comm Test",spi_comm_test},
 	{"4", "Runs Test 4",test4 },
 	{"5", "Runs Test 5",test5 },
+	{"string", "Changes String (A = 0, B = 1)",chg_string},
 	{"mode", "Changes Mode {charge, discharge, balance}",chg_mode},
 	{"sis", "Infinite SPI",spi_infinite_send },
 	{"spil", "Spi Loopback", spi_loopback},
