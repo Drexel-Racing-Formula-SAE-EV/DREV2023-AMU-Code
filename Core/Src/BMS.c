@@ -470,18 +470,18 @@ void coll_unbalanced_cells(void){
 void temp_test(void){
 	for(int i=0;i<8;i++){
 		temp_calc(i);
-		//printf("\r\n%d\r\n",i);
+		printf("\r\n%d\r\n",i);
 		//for testing read T Cell 14... on mux 00
 		for(int i = 0; i<4; i++){
-			//wakeup_sleep(TOTAL_IC);
-			//LTC6813_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
-			//conv_time = LTC6813_pollAdc();
-			//print_conv_time(conv_time);
-			//wakeup_sleep(TOTAL_IC);
-			//error = LTC6813_rdaux(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all aux registers
-			//check_error(error);
-			//print_aux(DATALOG_DISABLED);
-			//osDelay(1000);
+			wakeup_sleep(TOTAL_IC);
+			LTC6813_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
+			conv_time = LTC6813_pollAdc();
+			print_conv_time(conv_time);
+			wakeup_sleep(TOTAL_IC);
+			error = LTC6813_rdaux(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all aux registers
+			check_error(error);
+			print_aux(DATALOG_DISABLED);
+			osDelay(1000);
 		}
 	}
 }
@@ -543,12 +543,12 @@ void temp_calc(uint8_t channel){
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0b00001001;//0000(4-1 off mux channel) + master NACK(8)+stop
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x7F;//0111 no transmit
 		a_d->BMS_IC[current_ic].com.tx_data[5]= 0xF9;*/
-		a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start(6) + I2C_address D0 (0xA0)
+		/*a_d->BMS_IC[current_ic].com.tx_data[0]= 0x6A; // Icom Start(6) + I2C_address D0 (0xA0)
 		a_d->BMS_IC[current_ic].com.tx_data[1]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[2]= 0x00; // Icom Blank (0) + eeprom address D1 (0x00)
 		a_d->BMS_IC[current_ic].com.tx_data[3]= 0x08; // Fcom master NACK(8)
 		a_d->BMS_IC[current_ic].com.tx_data[4]= 0x01; // Icom Blank (0) + data D2 (0x13)
-		a_d->BMS_IC[current_ic].com.tx_data[5]= 0x39; // Fcom master NACK + Stop(9)
+		a_d->BMS_IC[current_ic].com.tx_data[5]= 0x39; // Fcom master NACK + Stop(9)*/
     }
     wakeup_sleep(TOTAL_IC);
     LTC6813_wrcomm(TOTAL_IC,a_d->BMS_IC); // write to comm registter

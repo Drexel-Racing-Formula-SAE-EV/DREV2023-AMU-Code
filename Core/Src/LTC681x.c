@@ -2122,7 +2122,7 @@ void LTC681x_stcomm(uint8_t len) //Length of data to be transmitted
 		{
 		  spi_read_byte(0xFF);
 		}
-		u_sleep(75);//maybe remove?
+		//u_sleep(75);//maybe remove?
 		LTC_6813B_CS_SET
 	}
 	else{
@@ -2132,7 +2132,7 @@ void LTC681x_stcomm(uint8_t len) //Length of data to be transmitted
 		{
 		  spi_read_byte(0xFF);
 		}
-		u_sleep(75);//maybe remove?
+		//u_sleep(75);//maybe remove?
 		LTC_6813_CS_SET
 	}
 }
