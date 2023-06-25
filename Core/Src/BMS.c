@@ -468,6 +468,19 @@ void coll_unbalanced_cells(void){
 }
 
 void temp_test(void){
+	temp_calc(7);
+	for(int i = 0; i<20; i++){
+		wakeup_sleep(TOTAL_IC);
+		LTC6813_adax(ADC_CONVERSION_MODE, AUX_CH_TO_CONVERT);
+		conv_time = LTC6813_pollAdc();
+		print_conv_time(conv_time);
+		wakeup_sleep(TOTAL_IC);
+		error = LTC6813_rdaux(SEL_ALL_REG,TOTAL_IC,a_d->BMS_IC); // Set to read back all aux registers
+		check_error(error);
+		print_aux(DATALOG_DISABLED);
+		osDelay(1000);
+	}
+	/*
 	for(int i=0;i<8;i++){
 		temp_calc(i);
 		printf("\r\n%d\r\n",i);
@@ -483,7 +496,7 @@ void temp_test(void){
 			print_aux(DATALOG_DISABLED);
 			osDelay(1000);
 		}
-	}
+	}*/
 }
 
 void temp_calc(uint8_t channel){

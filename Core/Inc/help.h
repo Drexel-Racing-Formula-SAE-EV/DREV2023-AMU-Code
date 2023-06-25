@@ -206,6 +206,9 @@ typedef struct{
 	 volatile uint16_t volt_mask;
 	 volatile uint16_t old_mask;
 
+	 //stores each temperature from mux reading
+	 volatile uint16_t temp[16];
+
 	 uint8_t repeat_coll;
 }segment;
 
