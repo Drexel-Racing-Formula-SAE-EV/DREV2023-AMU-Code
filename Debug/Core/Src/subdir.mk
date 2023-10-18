@@ -1,12 +1,16 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (10.3-2021.10)
+# Toolchain: GNU Tools for STM32 (11.3.rel1)
 ################################################################################
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Core/Src/BMS.c \
+../Core/Src/BMS_print.c \
 ../Core/Src/LTC6813.c \
 ../Core/Src/LTC681x.c \
+../Core/Src/cli.c \
+../Core/Src/driver_test.c \
 ../Core/Src/freertos.c \
 ../Core/Src/help.c \
 ../Core/Src/main.c \
@@ -18,8 +22,12 @@ C_SRCS += \
 ../Core/Src/system_stm32f4xx.c 
 
 OBJS += \
+./Core/Src/BMS.o \
+./Core/Src/BMS_print.o \
 ./Core/Src/LTC6813.o \
 ./Core/Src/LTC681x.o \
+./Core/Src/cli.o \
+./Core/Src/driver_test.o \
 ./Core/Src/freertos.o \
 ./Core/Src/help.o \
 ./Core/Src/main.o \
@@ -31,8 +39,12 @@ OBJS += \
 ./Core/Src/system_stm32f4xx.o 
 
 C_DEPS += \
+./Core/Src/BMS.d \
+./Core/Src/BMS_print.d \
 ./Core/Src/LTC6813.d \
 ./Core/Src/LTC681x.d \
+./Core/Src/cli.d \
+./Core/Src/driver_test.d \
 ./Core/Src/freertos.d \
 ./Core/Src/help.d \
 ./Core/Src/main.d \
@@ -51,7 +63,7 @@ Core/Src/%.o Core/Src/%.su Core/Src/%.cyclo: ../Core/Src/%.c Core/Src/subdir.mk
 clean: clean-Core-2f-Src
 
 clean-Core-2f-Src:
-	-$(RM) ./Core/Src/LTC6813.cyclo ./Core/Src/LTC6813.d ./Core/Src/LTC6813.o ./Core/Src/LTC6813.su ./Core/Src/LTC681x.cyclo ./Core/Src/LTC681x.d ./Core/Src/LTC681x.o ./Core/Src/LTC681x.su ./Core/Src/freertos.cyclo ./Core/Src/freertos.d ./Core/Src/freertos.o ./Core/Src/freertos.su ./Core/Src/help.cyclo ./Core/Src/help.d ./Core/Src/help.o ./Core/Src/help.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_hal_timebase_tim.cyclo ./Core/Src/stm32f4xx_hal_timebase_tim.d ./Core/Src/stm32f4xx_hal_timebase_tim.o ./Core/Src/stm32f4xx_hal_timebase_tim.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
+	-$(RM) ./Core/Src/BMS.cyclo ./Core/Src/BMS.d ./Core/Src/BMS.o ./Core/Src/BMS.su ./Core/Src/BMS_print.cyclo ./Core/Src/BMS_print.d ./Core/Src/BMS_print.o ./Core/Src/BMS_print.su ./Core/Src/LTC6813.cyclo ./Core/Src/LTC6813.d ./Core/Src/LTC6813.o ./Core/Src/LTC6813.su ./Core/Src/LTC681x.cyclo ./Core/Src/LTC681x.d ./Core/Src/LTC681x.o ./Core/Src/LTC681x.su ./Core/Src/cli.cyclo ./Core/Src/cli.d ./Core/Src/cli.o ./Core/Src/cli.su ./Core/Src/driver_test.cyclo ./Core/Src/driver_test.d ./Core/Src/driver_test.o ./Core/Src/driver_test.su ./Core/Src/freertos.cyclo ./Core/Src/freertos.d ./Core/Src/freertos.o ./Core/Src/freertos.su ./Core/Src/help.cyclo ./Core/Src/help.d ./Core/Src/help.o ./Core/Src/help.su ./Core/Src/main.cyclo ./Core/Src/main.d ./Core/Src/main.o ./Core/Src/main.su ./Core/Src/stm32f4xx_hal_msp.cyclo ./Core/Src/stm32f4xx_hal_msp.d ./Core/Src/stm32f4xx_hal_msp.o ./Core/Src/stm32f4xx_hal_msp.su ./Core/Src/stm32f4xx_hal_timebase_tim.cyclo ./Core/Src/stm32f4xx_hal_timebase_tim.d ./Core/Src/stm32f4xx_hal_timebase_tim.o ./Core/Src/stm32f4xx_hal_timebase_tim.su ./Core/Src/stm32f4xx_it.cyclo ./Core/Src/stm32f4xx_it.d ./Core/Src/stm32f4xx_it.o ./Core/Src/stm32f4xx_it.su ./Core/Src/syscalls.cyclo ./Core/Src/syscalls.d ./Core/Src/syscalls.o ./Core/Src/syscalls.su ./Core/Src/sysmem.cyclo ./Core/Src/sysmem.d ./Core/Src/sysmem.o ./Core/Src/sysmem.su ./Core/Src/system_stm32f4xx.cyclo ./Core/Src/system_stm32f4xx.d ./Core/Src/system_stm32f4xx.o ./Core/Src/system_stm32f4xx.su
 
 .PHONY: clean-Core-2f-Src
 
