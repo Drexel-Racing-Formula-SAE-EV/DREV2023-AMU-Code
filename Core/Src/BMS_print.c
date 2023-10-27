@@ -6,6 +6,7 @@
  */
 
 #include "BMS_print.h"
+#include "main.h"
 
 static app_data *a_d;
 
@@ -97,10 +98,13 @@ void print_cells(uint8_t datalog_en)
     if (datalog_en == 0)
     {
       printf("\r\n\t-------------------------------------------------------");
-      printf("\r\n\t| vmin: %f || vmax: %f || vtot: %f |",a_d->seg[current_ic].v_min*0.0001,a_d->seg[current_ic].v_max*0.0001,a_d->seg[current_ic].v_tot*0.0001);
+      printf("\r\n\t| vmin: %f || vmax: %f || vtot: %f |",
+    		  a_d->seg[current_ic].v_min*0.0001,
+			  a_d->seg[current_ic].v_max*0.0001,
+			  a_d->seg[current_ic].v_tot*0.0001);
       printf("\r\n\t-------------------------------------------------------\r\n");
       printf("\t--------\r\n");
-      printf("\t| IC %d |",current_ic+1);
+      printf("\t| IC %d / %d |",current_ic+1, TOTAL_IC);
       printf("\r\n\t------------------------------------------------------------------------------------------------------------------------------\r\n\t");
       for (int i=0; i<a_d->BMS_IC[0].ic_reg.cell_channels/2; i++)
       {

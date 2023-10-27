@@ -16,7 +16,7 @@
 //#include "LTC681x.h"
 //#include "main.h" // need to move implicit declares in main.c/h to help.h!!
 
-#define TOTAL_IC 1//should be 5
+#define TOTAL_IC 3 //should be 5
 
 //DEFINE GPIO's
 #define CSA4_RESET HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);

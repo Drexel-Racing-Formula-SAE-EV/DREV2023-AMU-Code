@@ -259,9 +259,10 @@ void chg_mode(uint8_t nargs, char **args){
 
 void volt_calc(uint8_t nargs, char **args){//collects voltages across all ICs calculate minimum, maximum and avg voltage per segment
 	uint16_t volt_min=65535,volt_max=0,total_cells=0;
-	uint32_t volt_total=0;
+	uint32_t volt_total;
 	for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++)
 	  {
+		volt_total = 0;
 		volt_min=65535;volt_max=0;total_cells=0;
 	    for (int i=0; i<a_d->BMS_IC[current_ic].ic_reg.cell_channels; i++){
 	    	//printf("%d:%.4f\r\n",BMS_IC[current_ic].cells.c_codes[i],BMS_IC[current_ic].cells.c_codes[i]*0.0001);

@@ -89,6 +89,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 #define SPI2CS1_GPIO_Port GPIOB
 #define SPI2CS2_Pin GPIO_PIN_14
 #define SPI2CS2_GPIO_Port GPIOB
+#define IMD_STATUS_Pin GPIO_PIN_9
+#define IMD_STATUS_GPIO_Port GPIOD
 #define LD4_Pin GPIO_PIN_12
 #define LD4_GPIO_Port GPIOD
 #define LD3_Pin GPIO_PIN_13
